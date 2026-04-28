@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# Media (PDFs subidos por usuarios)
+media/pdfs/*
+!media/pdfs/.gitkeep
+!media/.gitkeep
+
+# Storage (ChromaDB, embeddings, cache)
+storage/
+dump.rdb
+
+# Tesseract data (18MB, no subir)
+*.traineddata
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test / Debug scripts temporales
+diagnose_pdf.py
+diagnose_result.txt
+test_extraction.py
+test_ocr_quick.py
+test_ocr_result.txt
+check_error.py
+debug_chat.py
+retest_ingestion.py
+force_pull_ollama.py
+
+# Antigravity / Gemini
+.gemini/
+
+# Redis binarios
+redis/

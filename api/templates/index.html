@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Engine - Clean UI</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --bg-main: #fcfcfc;
+            --bg-panel: #ffffff;
+            --text-main: #111827;
+            --text-dim: #6b7280;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --code-bg: #f3f4f6;
+        }
+
+        /* Dark mode automático si el sistema lo prefiere, pero mantenemos un look "light" general muy limpio */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-main: #0f1115;
+                --bg-panel: #16181d;
+                --text-main: #f3f4f6;
+                --text-dim: #9ca3af;
+                --border: #2d3139;
+                --code-bg: #1f2228;
+                --accent: #3b82f6;
+                --accent-light: rgba(59, 130, 246, 0.1);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; overflow: hidden; }
+        
+        /* SIDEBAR (Minimalista) */
+        aside {
+            width: 280px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            z-index: 10;
+        }
+        h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;}
+        h1::before { content: ''; display: block; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; }
+
+        .upload-btn {
+            background: var(--bg-main);
+            border: 1px dashed var(--border);
+            padding: 1rem;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent);
+            transition: all 0.2s;
+        }
+        .upload-btn:hover { background: var(--accent-light); border-color: var(--accent); }
+
+        .config-block { display: flex; flex-direction: column; gap: 1rem; }
+        .config-item label { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); display: flex; justify-content: space-between; margin-bottom: 0.5rem;}
+        select, input[type=range] { width: 100%; }
+        select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); font-family: 'Inter'; font-size: 0.8rem;}
+        
+        /* DOCUMENT LIST */
+        #docList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+        .doc-item {
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .doc-item:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+        .doc-item.active { background: var(--accent-light); border-color: var(--accent); }
+        .badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; background: var(--border); margin-top: 5px; display: inline-block;}
+        .badge.PROCESANDO { background: #f59e0b; color: #fff;}
+        .badge.COMPLETADO { background: #10b981; color: #fff;}
+        .badge.ERROR { background: #ef4444; color: #fff;}
+
+        /* MAIN CONTENT AREA */
+        main { flex: 1; display: flex; flex-direction: column; position: relative;}
+        
+        /* WIZARD GUIADO */
+        .wizard-step { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; margin-bottom: 0.6rem; position: relative; transition: all 0.3s ease; }
+        .wizard-step.locked { opacity: 0.4; pointer-events: none; }
+        .wizard-step.active-step { border-color: var(--accent); box-shadow: 0 0 12px rgba(59,130,246,0.15); }
+        .wizard-step.done { border-color: #10b981; }
+        .wizard-number { position: absolute; top: -8px; left: 12px; background: var(--accent); color: white; font-size: 0.6rem; font-weight: 800; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .wizard-step.done .wizard-number { background: #10b981; }
+        .wizard-title { font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+
+        /* TABS (Chat vs Pipeline Lab) */
+        .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 2rem; background: var(--bg-panel); }
+        .tab { padding: 1rem 1.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent;}
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* VIEW CONTAINERS - see overrides below */
+        #pipeline-view { gap: 2rem; align-items: center; }
+        .pipeline-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideUp 0.5s forwards;
+        }
+        .pipeline-card h3 { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px;}
+        .code-box { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; color: var(--text-main);}
+        .arrow-down { text-align: center; color: var(--border); font-size: 1.5rem; }
+
+        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* CHAT VIEW */
+        #chat-view { gap: 1rem; }
+        .message { padding: 1rem; border-radius: 8px; max-width: 80%; font-size: 0.9rem; line-height: 1.5; box-shadow: var(--shadow); }
+        .user-msg { background: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 0;}
+        .ai-msg { background: var(--bg-panel); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 0;}
+        
+        /* BOTTOM BAR (Anclada dentro de cada tab) */
+        .tab-bottom-bar { background: var(--bg-panel); border-top: 1px solid var(--border); padding: 1rem 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+        .engine-settings { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; }
+        .chat-input-wrapper { display: flex; gap: 1rem; }
+        input[type=text] { flex: 1; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); font-family: 'Inter'; outline: none;}
+        input[type=text]:focus { border-color: var(--accent); }
+        button { background: var(--accent); color: white; border: none; padding: 0 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Inter'; transition: 0.2s;}
+        button:hover { opacity: 0.9; }
+
+        /* Vector Search Results */
+        .vector-result { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem; }
+        .vector-result .score-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #10b981); margin-top: 6px; }
+        
+        /* View containers need flex column for bottom bar anchoring */
+        .view { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+        .view.active { display: flex; }
+        #pipeline-view #pipeline-content { flex: 1; overflow-y: auto; padding: 2rem; }
+        #chat-messages { flex: 1; overflow-y: auto; }
+
+    </style>
+</head>
+<body>
+    <aside>
+        <h1>AI Data Engine</h1>
+        
+        <input type="file" id="fileInput" hidden accept=".pdf" onchange="uploadFile()">
+
+        <!-- WIZARD GUIADO -->
+        <div class="wizard-step" id="wizStep1">
+            <div class="wizard-number">1</div>
+            <div class="wizard-title">Subir Documento PDF</div>
+            <div class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                + Seleccionar PDF
+            </div>
+            <div id="uploadedFileName" style="font-size:0.7rem; color:var(--accent); margin-top:6px; display:none;"></div>
+        </div>
+
+        <div class="wizard-step locked" id="wizStep2">
+            <div class="wizard-number">2</div>
+            <div class="wizard-title">Motor de Extracción</div>
+            <select id="extractionMotor" onchange="updateMotorDesc()" style="width:100%; margin-top:6px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg-main); color:var(--text-main); font-size:0.78rem;">
+                <option value="pymupdf">⚡ PyMuPDF — Velocidad y precisión</option>
+                <option value="pymupdf_ocr" selected>🧠 PyMuPDF Híbrido + OCR — PDFs escaneados</option>
+                <option value="pdfplumber">📊 pdfplumber — Tablas y layout</option>
+                <option value="pypdf2">📄 PyPDF2 — Simple y liviano</option>
+                <option value="ocr">🔍 OCR (Tesseract puro) — Solo imágenes</option>
+            </select>
+            <div id="extractionMotorDesc" style="font-size:0.63rem; color:var(--text-dim); margin-top:4px;">Velocidad extrema. Ideal para PDFs digitales.</div>
+            <label style="display:flex; align-items:center; gap:6px; margin-top:8px; font-size:0.72rem; color:var(--text-main); cursor:pointer;">
+                <input type="checkbox" id="useDeadmau5" checked style="accent-color:var(--accent);">
+                🐭 deadmau5 (Deep Clean)
+            </label>
+            <div style="font-size:0.6rem; color:var(--text-dim); margin-top:2px; margin-left:22px;">Elimina ruido, ligaduras, páginas huérfanas y repara palabras cortadas.</div>
+        </div>
+
+        <div class="wizard-step locked" id="wizStep3">
+            <div class="wizard-number">3</div>
+            <div class="wizard-title">Fragmentación (Chunking)</div>
+            <div class="config-item" style="margin-top:6px;">
+                <label>Estrategia
+                    <select id="chunkStrategy" style="width: auto; margin-left: 8px; padding:3px 6px; font-size:0.75rem;">
+                        <option value="recursive">Recursivo (Estándar)</option>
+                        <option value="character">Por Caracteres</option>
+                        <option value="token">Por Tokens</option>
+                    </select>
+                </label>
+            </div>
+            <div class="config-item">
+                <label>Tamaño (Chars) <span id="sizeVal" style="color:var(--accent); font-weight:700;">1000</span></label>
+                <input type="range" id="chunkSize" min="200" max="2000" step="100" value="1000" oninput="document.getElementById('sizeVal').innerText = this.value">
+            </div>
+            <div class="config-item">
+                <label>Solapamiento <span id="overlapVal" style="color:var(--accent); font-weight:700;">15%</span></label>
+                <input type="range" id="chunkOverlap" min="0" max="30" step="5" value="15" oninput="document.getElementById('overlapVal').innerText = this.value + '%'">
+            </div>
+        </div>
+
+        <div class="wizard-step locked" id="wizStep4">
+            <div class="wizard-number">4</div>
+            <div class="wizard-title">Procesar</div>
+            <div id="processBtn" class="upload-btn" onclick="wizardProcess()" style="background:var(--accent); color:white; text-align:center; font-weight:700;">
+                ⚙️ Iniciar Análisis Vectorial
+            </div>
+        </div>
+
+        <div style="font-size: 0.75rem; font-weight: 600; margin-top: 1rem; color: var(--text-dim);">TUS DOCUMENTOS</div>
+        <div id="docList"></div>
+    </aside>
+
+    <main>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('pipeline', this)">Vector Lab Pipeline</div>
+            <div class="tab" onclick="switchTab('chat', this)">Chat & Análisis (IA)</div>
+        </div>
+
+        <!-- PIPELINE VIEW con su propio chat vectorial -->
+        <div id="pipeline-view" class="view active">
+            <div id="pipeline-content" style="width: 100%; display:flex; flex-direction:column; align-items:center; gap: 1rem;">
+                <p style="color: var(--text-dim); margin-top: 3rem;">Sube o selecciona un documento para ver su radiografía matemática.</p>
+            </div>
+            <!-- Chat directo a ChromaDB -->
+            <div class="tab-bottom-bar">
+                <div style="font-size:0.75rem; color:var(--text-dim); display:flex; justify-content:space-between; align-items:center;">
+                    <span>🔍 <b>Consulta Directa a ChromaDB</b> — Sin IA, solo similitud vectorial</span>
+                    <label style="display:flex; align-items:center; gap:4px;"><span>Top K:</span>
+                        <select id="vectorK" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--text-main); font-size:0.75rem;">
+                            <option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="vectorQueryInput" placeholder="Escribe una consulta para buscar en la base vectorial..." onkeypress="if(event.key==='Enter') vectorSearch()">
+                    <button onclick="vectorSearch()">Buscar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT VIEW con IA (Ollama) -->
+        <div id="chat-view" class="view">
+            <div id="chat-messages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:1rem; padding:2rem;"></div>
+            <div class="tab-bottom-bar">
+                <div class="engine-settings">
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <strong>Modelo IA:</strong>
+                        <select id="ollamaModel" style="border:none; background:transparent; font-weight:600; color:var(--accent); cursor:pointer;">
+                            <option value="llama3">Llama 3 (8B)</option>
+                            <option value="qwen2:1.5b">Qwen 2 (1.5B)</option>
+                            <option value="llama3.1">Llama 3.1</option>
+                            <option value="gemma2">Gemma 2</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap: 15px; color: var(--text-dim);">
+                        <label><input type="checkbox" id="useRerank" checked> Re-Ranking (FlashRank)</label>
+                        <label><input type="checkbox" id="useMetadataFilter" checked> Filtrar por Documento</label>
+                    </div>
+                </div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="promptInput" placeholder="Haz una pregunta a la IA sobre el documento..." onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button onclick="sendMessage()">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentDocId = null;
+
+        const motorDescriptions = {
+            "pymupdf": "⚡ Velocidad extrema. Solo para PDFs con texto digital seleccionable.",
+            "pymupdf_ocr": "🧠 RECOMENDADO. Detecta texto digital Y aplica OCR a páginas escaneadas. El más completo.",
+            "pdfplumber": "📊 Excelente para tablas, columnas y documentos con diseño complejo. Más lento.",
+            "pypdf2": "📄 Simple y liviano. Puede fallar con caracteres especiales o diseños complejos.",
+            "ocr": "🔍 Tesseract puro. Renderiza TODAS las páginas como imagen. Muy lento pero preciso para escaneados."
+        };
+
+        function updateMotorDesc() {
+            const motor = document.getElementById('extractionMotor').value;
+            document.getElementById('extractionMotorDesc').innerText = motorDescriptions[motor] || "";
+        }
+
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            
+            if (element) {
+                element.classList.add('active');
+            } else {
+                const tabElement = document.querySelector(`.tab[onclick*="${tabId}"]`);
+                if(tabElement) tabElement.classList.add('active');
+            }
+            
+            document.getElementById(tabId + '-view').classList.add('active');
+        }
+
+        async function fetchDocuments() {
+            try {
+                const res = await fetch('/api/documents/');
+                const docs = await res.json();
+                const list = document.getElementById('docList');
+                list.innerHTML = '';
+                docs.forEach(doc => {
+                    const div = document.createElement('div');
+                    div.className = `doc-item ${doc.id === currentDocId ? 'active' : ''}`;
+                    div.id = `doc-${doc.id}`;
+                    div.onclick = () => selectDoc(doc.id);
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:start;">
+                            <strong>${doc.nombre}</strong>
+                            <span style="color:red; font-size:0.6rem; cursor:pointer;" onclick="deleteDoc('${doc.id}', event)">[X]</span>
+                        </div>
+                        <div class="badge ${doc.estado}" id="badge-${doc.id}">${doc.estado}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                console.error("Error fetching docs", e);
+            }
+        }
+
+        function selectDoc(id) {
+            currentDocId = id;
+            fetchDocuments(); // Refresh UI selection
+            loadPipelineData(id);
+        }
+
+        async function loadPipelineData(id) {
+            const res = await fetch(`/api/documents/${id}/status/`);
+            const data = await res.json();
+            const container = document.getElementById('pipeline-content');
+            
+            if (data.estado !== 'COMPLETADO') {
+                if (data.estado === 'ERROR') {
+                    container.innerHTML = `<p style="color: red; margin-top: 3rem;"><b>Error al procesar:</b><br>${data.error_message || 'Fallo desconocido'}</p>`;
+                } else {
+                    container.innerHTML = `<p style="color: var(--text-dim); margin-top: 3rem;">El documento está en estado: ${data.estado}</p>`;
+                }
+                return;
+            }
+
+            if (!data.metadata_sample || !data.chunks_sample) {
+                container.innerHTML = `<p style="color: var(--text-dim); margin-top: 3rem;">No hay datos de radiografía disponibles.</p>`;
+                return;
+            }
+
+            let metaInfo = data.metadata_sample.info || {};
+            let textoPuro = data.metadata_sample.texto_puro || "Sin texto extraíble";
+            let vectors = data.metadata_sample.vectors || [];
+            let stats = data.metadata_sample.stats || {};
+            let chunks = data.chunks_sample || [];
+
+            // Guardar para descargas
+            window._pipelineText = textoPuro;
+            window._pipelineChunks = chunks;
+            window._pipelineVectors = vectors;
+
+            // === PASO 1: METADATOS ===
+            let metaHtml = JSON.stringify(metaInfo, null, 2);
+
+            // === PASO 3: TABLA DE CHUNKS ===
+            let chunksHtml = '';
+            if (chunks.length > 0 && typeof chunks[0] === 'object') {
+                chunksHtml = `<div style="font-size:0.75rem; margin-bottom:10px; color:var(--accent); font-weight:600;">
+                    📊 ${stats.total_parent_chunks || '?'} chunks padre · ${stats.total_child_chunks || '?'} chunks hijo · Tamaño: ${stats.chunk_size || '?'} chars · Solapamiento: ${stats.chunk_overlap || '?'} chars
+                </div>`;
+                chunksHtml += `<table style="width:100%; border-collapse:collapse; font-size:0.75rem; font-family:'JetBrains Mono',monospace;">
+                    <tr style="background:var(--accent); color:white;">
+                        <th style="padding:6px 8px; text-align:left;">ID</th>
+                        <th style="padding:6px 8px; text-align:left;">Pág.</th>
+                        <th style="padding:6px 8px; text-align:left;">Chars</th>
+                        <th style="padding:6px 8px; text-align:left;">Contenido del Fragmento</th>
+                    </tr>`;
+                chunks.forEach(c => {
+                    chunksHtml += `<tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:6px 8px; font-weight:600; color:var(--accent);">#${c.id}</td>
+                        <td style="padding:6px 8px;">${c.page}</td>
+                        <td style="padding:6px 8px;">${c.size}</td>
+                        <td style="padding:6px 8px; white-space:pre-wrap; max-width:500px; word-break:break-word;">${c.text}</td>
+                    </tr>`;
+                });
+                chunksHtml += '</table>';
+            } else {
+                chunksHtml = '<pre>' + chunks.map(c => typeof c === 'string' ? c : JSON.stringify(c)).join('\n\n---\n\n') + '</pre>';
+            }
+
+            // === PASO 4: VECTORES ===
+            let vectorsHtml = '';
+            if (vectors.length > 0 && !vectors[0].error) {
+                vectorsHtml = `<table style="width:100%; border-collapse:collapse; font-size:0.72rem; font-family:'JetBrains Mono',monospace;">
+                    <tr style="background:var(--accent); color:white;">
+                        <th style="padding:6px 8px;">Chunk</th>
+                        <th style="padding:6px 8px;">Dims</th>
+                        <th style="padding:6px 8px;">Vista Previa</th>
+                        <th style="padding:6px 8px;">Vector (15 de ${vectors[0]?.dimensions || 384})</th>
+                    </tr>`;
+                vectors.forEach(v => {
+                    vectorsHtml += `<tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:6px 8px; font-weight:600; color:var(--accent);">#${v.chunk_id}</td>
+                        <td style="padding:6px 8px;">${v.dimensions}</td>
+                        <td style="padding:6px 8px; max-width:200px; word-break:break-word;">${v.text_preview}</td>
+                        <td style="padding:6px 8px; color:var(--accent); word-break:break-all;">[ ${v.sample.join(', ')} ... ]</td>
+                    </tr>`;
+                });
+                vectorsHtml += '</table>';
+            } else {
+                vectorsHtml = "No se pudieron generar vectores.";
+            }
+
+            const dlBtnStyle = 'font-size:0.7rem; padding:4px 10px; border-radius:4px; cursor:pointer; border:1px solid var(--accent); background:var(--accent-light); color:var(--accent); font-weight:600; float:right;';
+
+            container.innerHTML = `
+                <div class="pipeline-card" style="animation-delay: 0.1s">
+                    <h3>1. Extracción de Metadatos (PyMuPDF)</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Información extraída del PDF por PyMuPDF:</p>
+                    <div class="code-box">${metaHtml}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.2s">
+                    <h3>2. Texto Procesado (TXT Limpio)
+                        <span style="${dlBtnStyle}" onclick="downloadFile(window._pipelineText, 'texto_limpio.txt')">⬇ Descargar TXT</span>
+                    </h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">
+                        ${metaInfo.total_pages || '?'} páginas fusionadas y limpiadas. Este es el texto <b>exacto</b> que la IA leerá:
+                    </p>
+                    <div class="code-box" style="max-height:400px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;">${textoPuro}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.4s">
+                    <h3>3. Fragmentación (RecursiveCharacterTextSplitter)
+                        <span style="${dlBtnStyle}" onclick="downloadFile(JSON.stringify(window._pipelineChunks,null,2), 'chunks.json')">⬇ Descargar Chunks</span>
+                    </h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">
+                        Texto cortado con separadores inteligentes (párrafos → oraciones → palabras):
+                    </p>
+                    <div style="max-height:500px; overflow-y:auto; background:var(--code-bg); border-radius:6px; padding:1rem;">${chunksHtml}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.6s">
+                    <h3>4. Vectores Embeddings (all-MiniLM-L6-v2 → ChromaDB)
+                        <span style="${dlBtnStyle}" onclick="downloadFile(JSON.stringify(window._pipelineVectors,null,2), 'vectors.json')">⬇ Descargar Vectores</span>
+                    </h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">
+                        Cada chunk convertido en ${vectors[0]?.dimensions || 384} dimensiones flotantes para búsqueda semántica:
+                    </p>
+                    <div style="max-height:400px; overflow-y:auto; background:var(--code-bg); border-radius:6px; padding:1rem;">${vectorsHtml}</div>
+                </div>
+            `;
+            
+            switchTab('pipeline');
+        }
+
+        let pendingDocId = null; // Doc subido pero aún no procesado
+
+        function unlockWizardSteps() {
+            ['wizStep2', 'wizStep3', 'wizStep4'].forEach(id => {
+                document.getElementById(id).classList.remove('locked');
+            });
+            document.getElementById('wizStep1').classList.add('done');
+            document.getElementById('wizStep2').classList.add('active-step');
+        }
+
+        function resetWizard() {
+            ['wizStep1', 'wizStep2', 'wizStep3', 'wizStep4'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('done', 'active-step');
+            });
+            ['wizStep2', 'wizStep3', 'wizStep4'].forEach(id => {
+                document.getElementById(id).classList.add('locked');
+            });
+            document.getElementById('uploadedFileName').style.display = 'none';
+            pendingDocId = null;
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            const btn = document.querySelector('#wizStep1 .upload-btn');
+            btn.innerHTML = '⏳ Subiendo...';
+            btn.style.pointerEvents = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await fetch('/api/documents/upload/', { method: 'POST', body: formData });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(`Rechazado: ${err.substring(0, 50)}`);
+                }
+                const data = await res.json();
+                
+                await fetchDocuments();
+                
+                btn.innerHTML = '+ Seleccionar PDF';
+                btn.style.pointerEvents = 'auto';
+                
+                // Mostrar nombre del archivo subido
+                const nameDiv = document.getElementById('uploadedFileName');
+                nameDiv.innerText = '✓ ' + file.name;
+                nameDiv.style.display = 'block';
+                fileInput.value = '';
+                
+                // Guardar ID y desbloquear pasos 2-4
+                pendingDocId = data.id;
+                currentDocId = data.id;
+                unlockWizardSteps();
+                
+            } catch(e) {
+                btn.innerHTML = '❌ Error. Click para reintentar.';
+                btn.style.pointerEvents = 'auto';
+                console.error(e);
+            }
+        }
+
+        async function wizardProcess() {
+            if (!pendingDocId) { alert("Primero sube un PDF en el Paso 1"); return; }
+            // Llamar a startProcess con los params del wizard
+            startProcess(pendingDocId);
+            pendingDocId = null;
+            // Marcar todos los pasos como done
+            ['wizStep2', 'wizStep3', 'wizStep4'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('active-step');
+                el.classList.add('done');
+            });
+        }
+
+        async function startProcess(id) {
+            const strategy = document.getElementById('chunkStrategy').value;
+            const size = document.getElementById('chunkSize').value;
+            const overlap = document.getElementById('chunkOverlap').value;
+            const extraction_motor = document.getElementById('extractionMotor').value;
+            const apply_deadmau5 = document.getElementById('useDeadmau5').checked;
+            
+            currentDocId = id;
+            switchTab('pipeline');
+            
+            const badge = document.getElementById(`badge-${id}`);
+            if(badge) {
+                badge.className = 'badge PROCESANDO';
+                badge.innerText = 'PROCESANDO...';
+            }
+            
+            const container = document.getElementById('pipeline-content');
+            const motorLabel = document.getElementById('extractionMotor').options[document.getElementById('extractionMotor').selectedIndex].text;
+            const dm5Label = apply_deadmau5 ? ' + 🐭 deadmau5' : '';
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color: var(--accent); margin-top: 3rem;">
+                    <div style="font-size:3rem; margin-bottom:1rem; animation: spin 2s linear infinite;">⚙️</div>
+                    <h3 style="color: var(--text-main);">Construyendo Vector DB...</h3>
+                    <p style="font-size:0.85rem; color:var(--text-dim); text-align:center; max-width: 400px; margin-top: 1rem;">
+                        Motor: <b>${motorLabel}${dm5Label}</b><br>
+                        Extrayendo texto → Limpiando → Chunkeando → Vectorizando
+                        <br><br><b>No cierres esta ventana.</b>
+                    </p>
+                </div>
+                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+            `;
+            
+            try {
+                const res = await fetch(`/api/documents/${id}/process/`, { 
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ strategy, size, overlap, extraction_motor, apply_deadmau5 })
+                });
+                
+                if (!res.ok) throw new Error("Fallo en el procesamiento del motor.");
+                
+                await fetchDocuments();
+                selectDoc(id);
+            } catch(e) {
+                container.innerHTML = `<p style="color: red; margin-top: 3rem;"><b>Error crítico de motor:</b><br>${e.message}</p>`;
+                const badge = document.getElementById(`badge-${id}`);
+                if(badge) {
+                    badge.className = 'badge ERROR';
+                    badge.innerText = 'ERROR';
+                }
+            }
+        }
+
+        async function deleteDoc(id, event) {
+            event.stopPropagation();
+            await fetch(`/api/documents/${id}/delete/`, { method: 'DELETE' });
+            if (currentDocId === id) {
+                currentDocId = null;
+                document.getElementById('pipeline-content').innerHTML = '';
+            }
+            fetchDocuments();
+        }
+
+        async function sendMessage() {
+            if (!currentDocId) { alert("Selecciona un documento primero"); return; }
+            const input = document.getElementById('promptInput');
+            const text = input.value;
+            if(!text) return;
+            
+            const chatView = document.getElementById('chat-messages');
+            chatView.innerHTML += `<div class="message user-msg">${text}</div>`;
+            input.value = '';
+            
+            switchTab('chat');
+            chatView.scrollTop = chatView.scrollHeight;
+
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'message ai-msg';
+            aiMsg.innerHTML = '<i>Generando respuesta con IA...</i>';
+            chatView.appendChild(aiMsg);
+
+            try {
+                const res = await fetch(`/api/documents/${currentDocId}/chat/`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pregunta: text, 
+                        modelo: document.getElementById('ollamaModel').value,
+                        use_rerank: document.getElementById('useRerank').checked,
+                        use_metadata_filter: document.getElementById('useMetadataFilter').checked
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.answer) aiMsg.innerHTML = data.answer.replace(/\n/g, '<br>');
+                else if (data.error) aiMsg.innerHTML = `<span style="color:#ef4444">[ALERTA]</span><br>${data.error}`;
+                else aiMsg.innerHTML = "[ERROR DESCONOCIDO]";
+                
+            } catch (e) { aiMsg.innerHTML = `<span style="color:#ef4444">[FALLO]</span><br>Error de red.`; }
+            chatView.scrollTop = chatView.scrollHeight;
+        }
+
+        async function vectorSearch() {
+            if (!currentDocId) { alert("Selecciona un documento primero"); return; }
+            const input = document.getElementById('vectorQueryInput');
+            const query = input.value;
+            if (!query) return;
+
+            const k = document.getElementById('vectorK').value;
+            const container = document.getElementById('pipeline-content');
+            
+            // Insertar resultados al inicio del pipeline
+            const resultsDiv = document.getElementById('vector-results') || document.createElement('div');
+            resultsDiv.id = 'vector-results';
+            resultsDiv.innerHTML = '<p style="color:var(--accent);"><i>🔍 Buscando en ChromaDB...</i></p>';
+            
+            if (!document.getElementById('vector-results')) {
+                container.insertBefore(resultsDiv, container.firstChild);
+            }
+
+            try {
+                const res = await fetch(`/api/documents/${currentDocId}/vector-search/`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, k: parseInt(k) })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                let html = `<div class="pipeline-card" style="animation-delay:0s; border-color:var(--accent);">
+                    <h3>🔍 Resultados de Búsqueda Vectorial</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:10px;">
+                        Consulta: "<b>${data.query}</b>" — ${data.total} resultados encontrados (Top K=${k})
+                    </p>`;
+
+                data.results.forEach((r, i) => {
+                    const barWidth = Math.max(5, r.similarity_pct);
+                    // Color dinámico según interpretación
+                    let color = "#10b981"; // Verde (Alta)
+                    if (r.interpretation.includes("Media")) color = "#f59e0b"; // Naranja
+                    if (r.interpretation.includes("Baja") || r.interpretation.includes("Disímiles")) color = "#ef4444"; // Rojo
+
+                    html += `<div class="vector-result">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:600;">
+                            <span>#${i+1} — Pág. ${r.page}</span>
+                            <span style="color:${color};">${r.similarity_pct}% similitud (L2: ${r.score_l2})</span>
+                        </div>
+                        <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px;">Interpretación: <b style="color:${color}">${r.interpretation}</b></div>
+                        <div class="score-bar" style="width:${barWidth}%; background:${color};"></div>
+                        <div style="font-size:0.75rem; margin-top:8px; white-space:pre-wrap; font-family:'JetBrains Mono',monospace; color:var(--text-main);">${r.text}</div>
+                    </div>`;
+                });
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color:red;">Error de conexión: ${e.message}</p>`;
+            }
+            input.value = '';
+        }
+
+        function downloadFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        window.onload = fetchDocuments;
+    </script>
+</body>
+</html>

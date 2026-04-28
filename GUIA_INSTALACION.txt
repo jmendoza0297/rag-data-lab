@@ -1,0 +1,254 @@
+================================================================================
+         GUÍA DE INSTALACIÓN PASO A PASO - RAG DJANGO + OLLAMA
+         Sistema de Chat con PDFs usando Inteligencia Artificial Local
+================================================================================
+
+Este documento te guiará para instalar y ejecutar el proyecto en cualquier
+máquina con Windows (también funciona en Linux/Mac con ajustes mínimos).
+
+================================================================================
+REQUISITOS PREVIOS
+================================================================================
+
+Necesitas instalar 3 programas externos (todos gratuitos):
+
+  1. Python 3.10 o superior
+  2. Redis (servidor de mensajería para Celery)
+  3. Ollama (servidor de IA local)
+
+================================================================================
+PASO 1: INSTALAR PYTHON
+================================================================================
+
+  1. Ve a: https://www.python.org/downloads/
+  2. Descarga Python 3.10 o superior.
+  3. IMPORTANTE: Durante la instalación, marca la casilla
+     "Add Python to PATH" (Agregar Python al PATH).
+  4. Verifica que se instaló correctamente:
+
+     python --version
+
+================================================================================
+PASO 2: INSTALAR REDIS
+================================================================================
+
+Redis es el "mensajero" entre Django y Celery. Sin él, las tareas en
+segundo plano no funcionan.
+
+OPCIÓN A - Usando Docker (recomendado):
+  Si tienes Docker instalado, simplemente ejecuta:
+
+     docker run -d --name redis -p 6379:6379 redis:alpine
+
+OPCIÓN B - Instalación directa en Windows:
+  1. Ve a: https://github.com/tporadowski/redis/releases
+  2. Descarga el archivo .msi más reciente.
+  3. Instálalo con las opciones por defecto.
+  4. Redis se ejecutará automáticamente como servicio de Windows.
+  5. Verifica que funciona:
+
+     redis-cli ping
+     (Debe responder: PONG)
+
+OPCIÓN C - Usando Memurai (alternativa para Windows):
+  1. Ve a: https://www.memurai.com/get-memurai
+  2. Descarga la versión gratuita para desarrollo.
+  3. Instálalo y se ejecutará como servicio.
+
+================================================================================
+PASO 3: INSTALAR OLLAMA (Servidor de IA Local)
+================================================================================
+
+Ollama es el programa que ejecuta modelos de lenguaje (como ChatGPT pero
+en tu propia computadora, gratis y sin internet).
+
+  1. Ve a: https://ollama.com/download
+  2. Descarga e instala la versión para tu sistema operativo.
+  3. Una vez instalado, abre una terminal y descarga el modelo:
+
+     ollama pull llama3
+
+     (Esto descargará ~4.7 GB la primera vez. Solo se hace una vez.)
+
+  4. Verifica que Ollama está funcionando:
+
+     ollama list
+
+     (Debe mostrar el modelo "llama3" en la lista.)
+
+  NOTA: Ollama se ejecuta automáticamente en http://localhost:11434
+        Puedes verificarlo abriendo esa URL en tu navegador.
+
+  MODELOS ALTERNATIVOS (más ligeros):
+  - Si tu PC tiene poca RAM (menos de 8 GB), usa:
+     ollama pull mistral
+  - Luego cambia "llama3" por "mistral" en el archivo:
+     api/services/rag_logic.py (línea del ChatOllama)
+
+================================================================================
+PASO 4: CONFIGURAR EL PROYECTO DJANGO
+================================================================================
+
+  1. Abre una terminal (PowerShell o CMD) en la carpeta del proyecto:
+
+     cd rag_django_ollama
+
+  2. Crea un entorno virtual de Python (aísla las dependencias):
+
+     python -m venv venv
+
+  3. Activa el entorno virtual:
+
+     En Windows (PowerShell):
+       .\venv\Scripts\Activate.ps1
+
+     En Windows (CMD):
+       venv\Scripts\activate.bat
+
+     En Linux/Mac:
+       source venv/bin/activate
+
+     (Verás "(venv)" al inicio de la línea de comandos.)
+
+  4. Instala todas las dependencias del proyecto:
+
+     pip install -r requirements.txt
+
+     (Esto tardará unos minutos la primera vez porque descarga
+      las librerías de IA y el modelo de embeddings.)
+
+  5. Crea la base de datos:
+
+     python manage.py makemigrations api
+     python manage.py migrate
+
+  6. (Opcional) Crea un usuario administrador para el panel de Django:
+
+     python manage.py createsuperuser
+
+================================================================================
+PASO 5: EJECUTAR EL SISTEMA (3 terminales)
+================================================================================
+
+Necesitas abrir 3 terminales simultáneamente. En cada una, navega a la
+carpeta del proyecto y activa el entorno virtual primero.
+
+--- TERMINAL 1: Servidor Django ---
+     cd rag_django_ollama
+     .\venv\Scripts\Activate.ps1
+     python manage.py runserver
+
+     (El servidor web estará en: http://localhost:8000)
+
+--- TERMINAL 2: Worker de Celery ---
+     cd rag_django_ollama
+     .\venv\Scripts\Activate.ps1
+     celery -A rag_project worker --loglevel=info --pool=solo
+
+     (Este proceso escucha y ejecuta las tareas de procesamiento de PDFs.
+      La opción --pool=solo es necesaria en Windows.)
+
+--- TERMINAL 3: Ollama (si no se inició automáticamente) ---
+     ollama serve
+
+     (Si Ollama ya está corriendo como servicio, esta terminal no es necesaria.)
+
+================================================================================
+PASO 6: USAR LA APLICACIÓN
+================================================================================
+
+  1. Abre tu navegador en: http://localhost:8000
+
+  2. En la barra lateral izquierda, haz clic en "Arrastra tu PDF aquí"
+     o arrastra un archivo PDF directamente.
+
+  3. Espera a que el estado cambie de "PROCESANDO" a "COMPLETADO".
+     (Puedes ver el progreso en la Terminal 2 donde corre Celery.)
+
+  4. Una vez completado, escribe tu pregunta en el campo de texto
+     y presiona "Enviar".
+
+  5. La IA leerá el documento y te responderá basándose en su contenido.
+
+  PANEL DE ADMINISTRACIÓN:
+  - Accede a: http://localhost:8000/admin/
+  - Usa el superusuario que creaste en el Paso 4.6.
+  - Aquí puedes ver todos los documentos y sus estados.
+
+================================================================================
+ENDPOINTS DE LA API (para uso programático)
+================================================================================
+
+  POST /api/documents/upload/
+    - Sube un PDF.
+    - Body: form-data con campo "file" (archivo PDF).
+    - Respuesta: JSON con el ID y estado del documento.
+
+  GET /api/documents/{uuid}/status/
+    - Consulta el estado de procesamiento.
+    - Respuesta: JSON con estado actual (PENDIENTE/PROCESANDO/COMPLETADO/ERROR).
+
+  POST /api/documents/{uuid}/chat/
+    - Envía una pregunta sobre el documento.
+    - Body: JSON {"pregunta": "¿De qué trata el documento?"}
+    - Respuesta: JSON {"answer": "...", "sources": [...]}
+
+================================================================================
+SOLUCIÓN DE PROBLEMAS COMUNES
+================================================================================
+
+  ERROR: "No module named 'django'"
+  → No activaste el entorno virtual. Ejecuta: .\venv\Scripts\Activate.ps1
+
+  ERROR: "Connection refused" en Celery
+  → Redis no está corriendo. Inicia Redis o Docker.
+
+  ERROR: "Connection error" al chatear
+  → Ollama no está corriendo. Ejecuta: ollama serve
+
+  ERROR: "Model not found" en Ollama
+  → No descargaste el modelo. Ejecuta: ollama pull llama3
+
+  LA PÁGINA SE VE EN BLANCO
+  → Verifica que la Terminal 1 (Django) esté activa sin errores.
+
+  EL PDF SE QUEDA EN "PROCESANDO" PARA SIEMPRE
+  → Verifica que la Terminal 2 (Celery) esté activa y sin errores.
+
+================================================================================
+ESTRUCTURA DEL PROYECTO
+================================================================================
+
+  rag_django_ollama/
+  ├── manage.py                    # Comando principal de Django
+  ├── requirements.txt             # Dependencias de Python
+  ├── db.sqlite3                   # Base de datos (se crea automáticamente)
+  │
+  ├── rag_project/                 # Configuración del proyecto
+  │   ├── __init__.py              # Carga Celery al arrancar
+  │   ├── settings.py              # Configuración general
+  │   ├── urls.py                  # Rutas principales
+  │   ├── celery.py                # Configuración de Celery
+  │   └── wsgi.py                  # Servidor WSGI
+  │
+  ├── api/                         # Aplicación principal
+  │   ├── models.py                # Modelo de Documento
+  │   ├── views.py                 # Lógica de los endpoints
+  │   ├── urls.py                  # Rutas de la API
+  │   ├── serializers.py           # Serializadores DRF
+  │   ├── tasks.py                 # Tareas asíncronas de Celery
+  │   ├── admin.py                 # Panel de administración
+  │   ├── apps.py                  # Configuración de la app
+  │   ├── templates/
+  │   │   └── index.html           # Interfaz visual (frontend)
+  │   └── services/
+  │       └── rag_logic.py         # CEREBRO: Lógica RAG Parent-Child
+  │
+  ├── storage/                     # Almacenamiento persistente de IA
+  │   ├── chroma/                  # Base de datos vectorial (ChromaDB)
+  │   └── docstore/                # Fragmentos "padre" (LocalFileStore)
+  │
+  └── media/                       # PDFs subidos por los usuarios
+      └── pdfs/
+
+================================================================================
