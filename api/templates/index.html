@@ -421,19 +421,19 @@
 
             container.innerHTML = `
                 <div class="pipeline-card" style="animation-delay: 0.1s">
-                    <h3>1. Extracción de Metadatos (PyMuPDF)</h3>
-                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Información extraída del PDF por PyMuPDF:</p>
-                    <div class="code-box">${metaHtml}</div>
-                </div>
-                <div class="arrow-down">↓</div>
-                <div class="pipeline-card" style="animation-delay: 0.2s">
-                    <h3>2. Texto Procesado (TXT Limpio)
+                    <h3>1. Texto Procesado (TXT Limpio)
                         <span style="${dlBtnStyle}" onclick="downloadFile(window._pipelineText, 'texto_limpio.txt')">⬇ Descargar TXT</span>
                     </h3>
                     <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">
-                        ${metaInfo.total_pages || '?'} páginas fusionadas y limpiadas. Este es el texto <b>exacto</b> que la IA leerá:
+                        ${metaInfo.total_paginas || '?'} páginas fusionadas y limpiadas. Este es el texto <b>exacto</b> que la IA leerá:
                     </p>
                     <div class="code-box" style="max-height:400px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;">${textoPuro}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.2s">
+                    <h3>2. Metadatos del Texto Procesado</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Metadatos generados a partir del texto extraído:</p>
+                    <div class="code-box">${metaHtml}</div>
                 </div>
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.4s">

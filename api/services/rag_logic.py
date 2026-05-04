@@ -84,12 +84,17 @@ class RAGManager:
                 }
             ))
 
-        # Metadatos enriquecidos para la UI
+        # Metadatos del texto extraído
+        texto_puro_completo_str = texto_puro_completo if isinstance(texto_puro_completo, str) else ""
+        total_chars = len(texto_puro_completo_str)
+        total_words = len(texto_puro_completo_str.split())
+        
         extracted_metadata = {
-            "source": file_path,
-            "total_pages": resultado_extraccion.get("total_pages_real", len(paginas)),
-            "paginas_con_texto": len(paginas),
             "motor_extraccion": motor_usado,
+            "total_paginas": resultado_extraccion.get("total_pages_real", len(paginas)),
+            "caracteres_totales": total_chars,
+            "palabras_totales": total_words,
+            "tiempo_lectura_estimado": f"{max(1, total_words // 200)} min",
             "advertencias": advertencias,
         }
 

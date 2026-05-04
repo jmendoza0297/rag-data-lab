@@ -32,7 +32,7 @@ if not texto_limpio:
     exit()
 
 print(f"\n📄 --- TEXTO EXTRAÍDO (Muestra de 300 caracteres) ---")
-print(f"{texto_limpio[:]}...\n---------------------------------------------------")
+print(f"{texto_limpio[:300]}...\n---------------------------------------------------")
 
 input("\n▶️ Presiona [Enter] para APLICAR LA FRAGMENTACIÓN (Chunking)...")
 splitter = RecursiveCharacterTextSplitter(chunk_size=250, chunk_overlap=50)
