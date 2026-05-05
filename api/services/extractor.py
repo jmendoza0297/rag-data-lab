@@ -37,20 +37,22 @@ def _clean_text(text: str) -> str:
 
 def extract_pymupdf(file_path: str) -> dict:
     """
-    Motor: PyMuPDF (fitz)
-    Fortaleza: Velocidad extrema, metadatos automáticos precisos.
+    Motor: PyMuPDF4LLM
+    Fortaleza: Obtiene Markdown limpio directamente del PDF digital.
     Debilidad: No hace OCR por sí solo.
     """
     try:
-        import fitz  # PyMuPDF
+        import pymupdf4llm
         pages = []
-        doc = fitz.open(file_path)
-        for i, page in enumerate(doc):
-            raw = page.get_text("text")
+        page_chunks = pymupdf4llm.to_markdown(file_path, page_chunks=True)
+        
+        for i, chunk in enumerate(page_chunks):
+            raw = chunk.get("text", "")
             clean = _clean_text(raw)
             if clean:
-                pages.append({"page": i + 1, "text": clean})
-        doc.close()
+                # Usar metadata.page si existe (pymupdf4llm usa 0-index), si no, usar i+1
+                page_num = chunk.get("metadata", {}).get("page", i) + 1
+                pages.append({"page": page_num, "text": clean})
 
         texto_completo = "\n\n".join(
             f"--- PÁGINA {p['page']} ---\n{p['text']}" for p in pages
@@ -58,21 +60,22 @@ def extract_pymupdf(file_path: str) -> dict:
         return {
             "pages": pages,
             "texto_completo": texto_completo,
-            "motor_usado": "PyMuPDF",
+            "motor_usado": "PyMuPDF4LLM",
             "advertencias": [] if pages else ["PDF sin texto extraíble. ¿Es un escaneado?"]
         }
     except Exception as e:
-        return {"pages": [], "texto_completo": "", "motor_usado": "PyMuPDF", "advertencias": [f"Error PyMuPDF: {str(e)}"]}
+        return {"pages": [], "texto_completo": "", "motor_usado": "PyMuPDF4LLM", "advertencias": [f"Error pymupdf4llm: {str(e)}"]}
 
 
 def extract_pdfplumber(file_path: str) -> dict:
     """
-    Motor: pdfplumber
-    Fortaleza: Excelente para tablas, columnas y diseño estructurado.
+    Motor: pdfplumber con pandas
+    Fortaleza: Excelente para tablas, convirtiéndolas a Markdown.
     Debilidad: Más lento que PyMuPDF.
     """
     try:
         import pdfplumber
+        import pandas as pd
         pages = []
         advertencias = []
         with pdfplumber.open(file_path) as pdf:
@@ -84,9 +87,13 @@ def extract_pdfplumber(file_path: str) -> dict:
                 tabla_txt = ""
                 if tables:
                     for table in tables:
-                        for row in table:
-                            row_clean = [cell.strip() if cell else "" for cell in row]
-                            tabla_txt += " | ".join(row_clean) + "\n"
+                        # Convertir a pandas DataFrame y a Markdown
+                        if len(table) > 1:
+                            df = pd.DataFrame(table[1:], columns=table[0])
+                            tabla_txt += "\n" + df.to_markdown(index=False) + "\n"
+                        elif len(table) == 1:
+                            df = pd.DataFrame(table)
+                            tabla_txt += "\n" + df.to_markdown(index=False, headers=False) + "\n"
 
                 combined = (raw or "") + ("\n[TABLA]\n" + tabla_txt if tabla_txt else "")
                 clean = _clean_text(combined)
@@ -102,7 +109,7 @@ def extract_pdfplumber(file_path: str) -> dict:
         return {
             "pages": pages,
             "texto_completo": texto_completo,
-            "motor_usado": "pdfplumber",
+            "motor_usado": "pdfplumber (con pandas)",
             "advertencias": advertencias
         }
     except Exception as e:

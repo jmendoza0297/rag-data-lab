@@ -89,6 +89,96 @@ class RAGManager:
         total_chars = len(texto_puro_completo_str)
         total_words = len(texto_puro_completo_str.split())
         
+        # Metadatos Semánticos (spaCy)
+        nlp_semantic_data = {"error": "No se pudo extraer semántica"}
+        try:
+            import spacy
+            from collections import Counter
+            
+            # Cargar modelo en español
+            nlp = spacy.load("es_core_news_sm")
+            
+            # Limitar a 100k caracteres para no bloquear la RAM
+            doc = nlp(texto_puro_completo_str[:100000])
+            
+            # 1. Entidades Nombradas
+            entities = {}
+            for ent in doc.ents:
+                if ent.label_ not in entities:
+                    entities[ent.label_] = set()
+                entities[ent.label_].add(ent.text.strip().replace("\n", " "))
+            top_entities = {k: list(v)[:15] for k, v in entities.items() if len(v) > 0}
+            
+            # 2. Palabras Clave (Frecuencia de Sustantivos)
+            keywords = [token.text.lower() for token in doc if token.pos_ in ["NOUN", "PROPN"] and not token.is_stop and len(token.text) > 3]
+            top_keywords = [word for word, count in Counter(keywords).most_common(20)]
+            
+            nlp_semantic_data = {
+                "idioma_modelo": "Español (es_core_news_sm)",
+                "palabras_clave_top20": top_keywords,
+                "entidades_top_15": top_entities
+            }
+        except Exception as e:
+            nlp_semantic_data = {"error": f"Fallo al cargar spaCy: {str(e)}"}
+
+        # === PASO 2.2: OBJETIVO JERÁRQUICO NUMÉRICO (Regex + Detección Real) ===
+        import re
+        jerarquia_sample = []
+        try:
+            # Detectar patrones jerárquicos reales del documento (ej: "Artículo 1.", "1.2.3", "CAPÍTULO II")
+            lineas = texto_puro_completo_str.split("\n")
+            capitulo_actual = ""
+            seccion_actual = ""
+            subseccion_actual = ""
+            
+            # Patrones de jerarquía real en documentos formales
+            pat_capitulo = re.compile(
+                r"^(?:CAP[ÍI]TULO|TITULO|TÍTULO|SECCI[ÓO]N|PARTE)\s+[IVXLCDM\d]+[.\s:]|"
+                r"^Art[íi]culo\s+\d+[.\s:]|"
+                r"^\d{1,2}[.\s]\s*[A-ZÁÉÍÓÚ]",
+                re.IGNORECASE
+            )
+            pat_seccion = re.compile(r"^\d{1,2}\.\d{1,2}[.\s]", re.IGNORECASE)
+            pat_subseccion = re.compile(r"^\d{1,2}\.\d{1,2}\.\d{1,3}[.\s]", re.IGNORECASE)
+            
+            for linea in lineas:
+                linea_limpia = linea.strip()
+                if not linea_limpia or len(linea_limpia) < 3:
+                    continue
+                    
+                if pat_subseccion.match(linea_limpia):
+                    match = pat_subseccion.match(linea_limpia)
+                    subseccion_actual = match.group(0).strip().rstrip(".")
+                    jerarquia_sample.append({
+                        "nivel": "subseccion",
+                        "codigo": subseccion_actual,
+                        "capitulo": capitulo_actual,
+                        "seccion": seccion_actual,
+                        "texto": linea_limpia[:200]
+                    })
+                elif pat_seccion.match(linea_limpia):
+                    match = pat_seccion.match(linea_limpia)
+                    seccion_actual = match.group(0).strip().rstrip(".")
+                    subseccion_actual = ""
+                    jerarquia_sample.append({
+                        "nivel": "seccion",
+                        "codigo": seccion_actual,
+                        "capitulo": capitulo_actual,
+                        "texto": linea_limpia[:200]
+                    })
+                elif pat_capitulo.match(linea_limpia):
+                    match = pat_capitulo.match(linea_limpia)
+                    capitulo_actual = match.group(0).strip().rstrip(".")
+                    seccion_actual = ""
+                    subseccion_actual = ""
+                    jerarquia_sample.append({
+                        "nivel": "capitulo",
+                        "codigo": capitulo_actual,
+                        "texto": linea_limpia[:200]
+                    })
+        except Exception as e:
+            jerarquia_sample = [{"error": str(e)}]
+
         extracted_metadata = {
             "motor_extraccion": motor_usado,
             "total_paginas": resultado_extraccion.get("total_pages_real", len(paginas)),
@@ -96,6 +186,8 @@ class RAGManager:
             "palabras_totales": total_words,
             "tiempo_lectura_estimado": f"{max(1, total_words // 200)} min",
             "advertencias": advertencias,
+            "estructura_semantica_nlp": nlp_semantic_data,
+            "objetivo_jerarquico": jerarquia_sample  # TODO el documento, sin límite
         }
 
         # === PASO 3: FRAGMENTACIÓN (CHUNKING) ===
@@ -113,6 +205,59 @@ class RAGManager:
         docs_validos = [d for d in docs if d.page_content.strip()]
         all_parent_chunks = parent_splitter.split_documents(docs_validos)
         all_child_chunks = child_splitter.split_documents(docs_validos)
+
+        # === INYECCIÓN DE METADATOS EN CADA CHUNK (para ChromaDB) ===
+        # Convertir palabras clave y entidades a strings serializables para ChromaDB
+        keywords_str = ", ".join(nlp_semantic_data.get("palabras_clave_top20", [])) if isinstance(nlp_semantic_data, dict) and "error" not in nlp_semantic_data else ""
+        entities_str = ""
+        if isinstance(nlp_semantic_data, dict) and "entidades_top_15" in nlp_semantic_data:
+            for label, ents in nlp_semantic_data["entidades_top_15"].items():
+                entities_str += f"{label}: {', '.join(ents[:5])}; "
+        
+        # Construir índice de jerarquía por posición para asignar a cada chunk
+        def _find_hierarchy_for_text(chunk_text):
+            """Busca en qué capítulo/sección/subsección cae un chunk."""
+            cap, sec, sub = "", "", ""
+            for entry in jerarquia_sample:
+                if isinstance(entry, dict) and "error" not in entry:
+                    nivel = entry.get("nivel", "")
+                    codigo = entry.get("codigo", "")
+                    titulo_jer = entry.get("texto", "")
+                    # Si alguna parte del título jerárquico aparece en el chunk, asignar
+                    if titulo_jer[:50] in texto_puro_completo_str:
+                        pos_jer = texto_puro_completo_str.find(titulo_jer[:50])
+                        pos_chunk = texto_puro_completo_str.find(chunk_text[:80])
+                        if pos_chunk >= pos_jer:
+                            if nivel == "capitulo":
+                                cap = codigo
+                                sec = ""
+                                sub = ""
+                            elif nivel == "seccion":
+                                sec = codigo
+                                sub = ""
+                            elif nivel == "subseccion":
+                                sub = codigo
+            return cap, sec, sub
+        
+        for chunk in all_parent_chunks:
+            cap, sec, sub = _find_hierarchy_for_text(chunk.page_content)
+            chunk.metadata["keywords"] = keywords_str
+            chunk.metadata["entities"] = entities_str
+            chunk.metadata["capitulo"] = cap
+            chunk.metadata["seccion"] = sec
+            chunk.metadata["subseccion"] = sub
+            chunk.metadata["total_paginas"] = str(extracted_metadata.get("total_paginas", ""))
+            chunk.metadata["motor"] = motor_usado
+        
+        for chunk in all_child_chunks:
+            cap, sec, sub = _find_hierarchy_for_text(chunk.page_content)
+            chunk.metadata["keywords"] = keywords_str
+            chunk.metadata["entities"] = entities_str
+            chunk.metadata["capitulo"] = cap
+            chunk.metadata["seccion"] = sec
+            chunk.metadata["subseccion"] = sub
+            chunk.metadata["total_paginas"] = str(extracted_metadata.get("total_paginas", ""))
+            chunk.metadata["motor"] = motor_usado
 
         # Preparar muestra completa de chunks para la UI
         chunks_sample = []

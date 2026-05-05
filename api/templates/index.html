@@ -70,7 +70,7 @@
         select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main); font-family: 'Inter'; font-size: 0.8rem;}
         
         /* DOCUMENT LIST */
-        #docList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+        #docList { flex: 1 1 0; min-height: 50px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
         .doc-item {
             background: var(--bg-main);
             border: 1px solid var(--border);
@@ -157,7 +157,8 @@
         
         <input type="file" id="fileInput" hidden accept=".pdf" onchange="uploadFile()">
 
-        <!-- WIZARD GUIADO -->
+        <!-- WIZARD GUIADO CON SCROLL INDEPENDIENTE -->
+        <div style="flex: 0 1 auto; overflow-y: auto; max-height: 55vh; min-height: 0; padding-right: 5px; margin-right: -5px; display: flex; flex-direction: column;">
         <div class="wizard-step" id="wizStep1">
             <div class="wizard-number">1</div>
             <div class="wizard-title">Subir Documento PDF</div>
@@ -188,22 +189,34 @@
         <div class="wizard-step locked" id="wizStep3">
             <div class="wizard-number">3</div>
             <div class="wizard-title">Fragmentación (Chunking)</div>
-            <div class="config-item" style="margin-top:6px;">
-                <label>Estrategia
-                    <select id="chunkStrategy" style="width: auto; margin-left: 8px; padding:3px 6px; font-size:0.75rem;">
-                        <option value="recursive">Recursivo (Estándar)</option>
-                        <option value="character">Por Caracteres</option>
-                        <option value="token">Por Tokens</option>
-                    </select>
-                </label>
+            
+            <div class="config-item" style="margin-top:8px; margin-bottom: 12px;">
+                <label style="display:block; margin-bottom:4px;">Estrategia de Corte</label>
+                <select id="chunkStrategy" onchange="updateChunkDesc()" style="width: 100%; padding:6px; font-size:0.75rem;">
+                    <option value="recursive" selected>Recursivo (Estándar)</option>
+                    <option value="character">Por Caracteres</option>
+                    <option value="token">Por Tokens</option>
+                </select>
+                <div id="chunkStrategyDesc" style="font-size:0.65rem; color:var(--text-dim); margin-top:6px; line-height: 1.4; background: var(--bg-main); padding: 6px; border-radius: 4px; border: 1px solid var(--border);">
+                    <b>Recursivo (Recomendado):</b> Es inteligente y trata de entender la estructura humana del texto antes de cortar (párrafos → oraciones → palabras). Mantiene las ideas juntas preservando el significado casi intacto.
+                </div>
             </div>
-            <div class="config-item">
-                <label>Tamaño (Chars) <span id="sizeVal" style="color:var(--accent); font-weight:700;">1000</span></label>
+
+            <div class="config-item" style="margin-bottom: 12px;">
+                <label style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    Tamaño (Chars/Tokens) <span id="sizeVal" style="color:var(--accent); font-weight:700;">1000</span>
+                </label>
                 <input type="range" id="chunkSize" min="200" max="2000" step="100" value="1000" oninput="document.getElementById('sizeVal').innerText = this.value">
             </div>
+
             <div class="config-item">
-                <label>Solapamiento <span id="overlapVal" style="color:var(--accent); font-weight:700;">15%</span></label>
+                <label style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    Solapamiento <span id="overlapVal" style="color:var(--accent); font-weight:700;">15%</span>
+                </label>
                 <input type="range" id="chunkOverlap" min="0" max="30" step="5" value="15" oninput="document.getElementById('overlapVal').innerText = this.value + '%'">
+                <div style="font-size:0.6rem; color:var(--text-dim); margin-top:4px; line-height:1.3;">
+                    <b>Red de seguridad:</b> Hace que el final de un chunk se repita al inicio del siguiente para mantener el hilo lógico (ej. a qué se refiere "Estas medidas").
+                </div>
             </div>
         </div>
 
@@ -214,6 +227,7 @@
                 ⚙️ Iniciar Análisis Vectorial
             </div>
         </div>
+        </div>
 
         <div style="font-size: 0.75rem; font-weight: 600; margin-top: 1rem; color: var(--text-dim);">TUS DOCUMENTOS</div>
         <div id="docList"></div>
@@ -223,6 +237,8 @@
         <div class="tabs">
             <div class="tab active" onclick="switchTab('pipeline', this)">Vector Lab Pipeline</div>
             <div class="tab" onclick="switchTab('chat', this)">Chat & Análisis (IA)</div>
+            <div class="tab" onclick="switchTab('guide', this)">📚 Academia RAG</div>
+            <div class="tab" onclick="switchTab('stack', this)">🔬 Stack & Tecnologías</div>
         </div>
 
         <!-- PIPELINE VIEW con su propio chat vectorial -->
@@ -272,6 +288,87 @@
                 </div>
             </div>
         </div>
+
+        <!-- GUIDE VIEW -->
+        <div id="guide-view" class="view" style="background: var(--bg-main); overflow-y: auto;">
+            <div style="padding: 3rem; max-width: 900px; margin: 0 auto;">
+                <h2 style="font-size: 2.2rem; color: var(--text-main); margin-bottom: 0.5rem; letter-spacing: -0.5px;">📚 Academia RAG</h2>
+                <p style="color: var(--text-dim); margin-bottom: 3rem; font-size: 1.1rem;">Domina el procesamiento vectorial de documentos y obtén respuestas perfectas.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <!-- Motores de Extracción -->
+                    <div style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 15px -3px rgba(0, 0, 0, 0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow)'">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">⚙️</div>
+                        <h3 style="margin-bottom: 12px; color: var(--text-main); font-size: 1.1rem;">¿Qué Motor de Extracción elegir?</h3>
+                        <ul style="font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; padding-left: 1.2rem;">
+                            <li style="margin-bottom: 8px;"><b style="color:var(--accent)">PyMuPDF Híbrido:</b> Tu comodín. Si el PDF tiene texto lo saca rápido, si tiene imágenes borrosas les pasa OCR automáticamente.</li>
+                            <li><b style="color:var(--accent)">pdfplumber:</b> Úsalo SÓLO si tu PDF parece una hoja de cálculo o tiene formatos de columnas complejos.</li>
+                        </ul>
+                    </div>
+
+                    <!-- El Mito de los 200 Caracteres -->
+                    <div style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 15px -3px rgba(0, 0, 0, 0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow)'">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">✂️</div>
+                        <h3 style="margin-bottom: 12px; color: var(--text-main); font-size: 1.1rem;">El Peligro de los Fragmentos Pequeños</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-dim); line-height: 1.6;">
+                            Si cortas el texto a <b>200 caracteres</b>, vas a partir oraciones y títulos largos por la mitad (ej: "Universidad Nacional..." | "...de Ingeniería"). <br><br>
+                            <span style="display: inline-block; padding: 4px 8px; background: #10b98120; color: #10b981; border-radius: 4px; font-weight: 600; margin-top: 5px;">Recomendación:</span> Usa <b>1000 a 1500 caracteres</b> para dar párrafos enteros de contexto a la IA.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="background: var(--accent-light); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 12px; padding: 2.5rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.05);">
+                    <h3 style="color: var(--accent); margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">🧩 ¿Cómo funciona el Solapamiento (Overlap)?</h3>
+                    <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin-bottom: 1.5rem;">
+                        Imagina que el sistema corta un texto justo entre estas dos frases: <i>"Juan compró un coche rojo."</i> y <i>"Este vehículo le costó caro."</i><br>
+                        Si la IA lee solo el segundo fragmento, no sabrá qué es "Este vehículo". El <b>Solapamiento (15%)</b> hace que el final del fragmento 1 se repita en el fragmento 2, pegando las ideas lógicas para que ChromaDB las entienda juntas.
+                    </p>
+                    <div style="display: flex; gap: 15px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; flex-wrap: wrap;">
+                        <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed var(--accent); flex: 1; min-width: 250px;">
+                            <div style="color: var(--text-dim); margin-bottom: 8px; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">📄 Chunk 1:</div>
+                            Juan compró un coche rojo. <b style="color:var(--accent); background: var(--accent-light); padding: 2px 4px; border-radius: 4px;">Este vehículo</b>
+                        </div>
+                        <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed #10b981; flex: 1; min-width: 250px;">
+                            <div style="color: var(--text-dim); margin-bottom: 8px; font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">📄 Chunk 2 (con Solapamiento):</div>
+                            <b style="color:var(--accent); background: var(--accent-light); padding: 2px 4px; border-radius: 4px;">Este vehículo</b> le costó muy caro.
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 4rem; padding: 3rem 2rem; border-top: 1px dashed var(--border);">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">🚀</div>
+                    <h3 style="font-size: 1.4rem; margin-bottom: 10px; color: var(--text-main);">¡Estás listo para dominar tus datos!</h3>
+                    <p style="color: var(--text-dim); font-size: 1rem; max-width: 500px; margin: 0 auto;">Vuelve a la pestaña "Vector Lab Pipeline", sube tu primer PDF usando el menú lateral izquierdo y observa la magia en tiempo real.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- STACK VIEW -->
+        <div id="stack-view" class="view" style="background: var(--bg-main); overflow-y: auto;">
+            <div style="padding: 2.5rem; max-width: 1000px; margin: 0 auto;">
+                <h2 style="font-size: 2.2rem; color: var(--text-main); margin-bottom: 0.3rem; letter-spacing: -0.5px;">🔬 Stack Tecnológico</h2>
+                <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 1rem;">Cada tecnología fue elegida por una razón estratégica. Haz clic en cualquier tarjeta para saber <b>por qué</b>.</p>
+
+                <!-- FILTROS -->
+                <div id="stackFilters" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:2rem;">
+                    <button onclick="filterStack('all')" class="stack-filter active" style="padding:6px 14px; border-radius:20px; border:1px solid var(--accent); background:var(--accent); color:white; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">Todas</button>
+                    <button onclick="filterStack('backend')" class="stack-filter" style="padding:6px 14px; border-radius:20px; border:1px solid #3b82f6; background:transparent; color:#3b82f6; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">🏗️ Backend</button>
+                    <button onclick="filterStack('ia')" class="stack-filter" style="padding:6px 14px; border-radius:20px; border:1px solid #8b5cf6; background:transparent; color:#8b5cf6; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">🧠 IA & NLP</button>
+                    <button onclick="filterStack('vectorial')" class="stack-filter" style="padding:6px 14px; border-radius:20px; border:1px solid #10b981; background:transparent; color:#10b981; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Vectorial</button>
+                    <button onclick="filterStack('pdf')" class="stack-filter" style="padding:6px 14px; border-radius:20px; border:1px solid #f59e0b; background:transparent; color:#f59e0b; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">📄 PDF</button>
+                    <button onclick="filterStack('frontend')" class="stack-filter" style="padding:6px 14px; border-radius:20px; border:1px solid #ec4899; background:transparent; color:#ec4899; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.2s;">🎨 Frontend</button>
+                </div>
+
+                <!-- GRID DE TECNOLOGÍAS -->
+                <div id="stackGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:1.2rem;">
+                </div>
+
+                <!-- LEYENDA -->
+                <div style="margin-top:3rem; padding:2rem; border-top:1px dashed var(--border); text-align:center;">
+                    <p style="color:var(--text-dim); font-size:0.85rem;">Total: <b id="stackCount">0</b> tecnologías · 100% ejecución local · Sin dependencia de APIs en la nube</p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -289,6 +386,150 @@
             const motor = document.getElementById('extractionMotor').value;
             document.getElementById('extractionMotorDesc').innerText = motorDescriptions[motor] || "";
         }
+
+        const chunkDescriptions = {
+            "recursive": "<b>Recursivo (Estándar):</b> El estándar de la industria. Es inteligente y trata de entender la estructura humana del texto antes de cortar (párrafos → oraciones → palabras). Mantiene las ideas juntas preservando el significado casi intacto.",
+            "character": "<b>Por Caracteres:</b> Método rudimentario. Cuenta el número de letras/espacios y corta exactamente donde le dices, sin importar el contexto. Destruye la semántica. Solo útil para ADN, código fuente o logs.",
+            "token": "<b>Por Tokens:</b> Usa el 'diccionario' matemático del LLM para cortar. Asegura que el chunk encaje perfectamente en la ventana de contexto. Útil si estás al límite de memoria, pero es 'ciego' a la estructura del documento."
+        };
+
+        function updateChunkDesc() {
+            const strategy = document.getElementById('chunkStrategy').value;
+            document.getElementById('chunkStrategyDesc').innerHTML = chunkDescriptions[strategy] || "";
+        }
+
+        // === STACK TECNOLÓGICO (Datos + Renderizado Dinámico) ===
+        const stackData = [
+            { cat: "backend", name: "Python 3.13", icon: "🐍", color: "#3b82f6", version: "3.13+",
+              why: "Lenguaje líder en IA y ciencia de datos. Su ecosistema (PyPI) tiene más de 500,000 librerías. Es el único lenguaje donde coexisten Django, LangChain, spaCy y PyMuPDF sin fricciones.",
+              does: "Ejecuta todo el servidor, la lógica de negocio, y orquesta los modelos de IA." },
+            { cat: "backend", name: "Django", icon: "🏗️", color: "#3b82f6", version: "6.0.4",
+              why: "Framework web más maduro de Python. Su ORM, sistema de migraciones y panel admin nos evitan escribir SQL manual. Es el estándar en startups y enterprise.",
+              does: "Gestiona la base de datos (SQLite), las rutas URL, el modelo Documento, y sirve la interfaz web." },
+            { cat: "backend", name: "Django REST Framework", icon: "🔌", color: "#3b82f6", version: "3.17.1",
+              why: "Convierte Django en una API REST profesional con serialización automática, validación de datos y respuestas JSON estandarizadas.",
+              does: "Expone los 8 endpoints REST que el frontend consume (subir, procesar, chat, buscar)." },
+            { cat: "backend", name: "psutil", icon: "📊", color: "#3b82f6", version: "7.2.2",
+              why: "Permite medir el rendimiento real del sistema en tiempo de ejecución sin herramientas externas.",
+              does: "Monitorea RAM, CPU y tiempos de respuesta que se muestran en la telemetría del chat." },
+
+            { cat: "ia", name: "LangChain", icon: "🔗", color: "#8b5cf6", version: "1.2.15",
+              why: "El framework estándar de la industria para construir pipelines RAG. Conecta extractores, splitters, embeddings y LLMs como piezas de LEGO.",
+              does: "Orquesta todo el flujo: desde que el texto se fragmenta hasta que la IA genera la respuesta final." },
+            { cat: "ia", name: "spaCy", icon: "🧬", color: "#8b5cf6", version: "3.8.14",
+              why: "La librería NLP más rápida y robusta del mundo open-source. Procesa 10,000+ palabras/segundo y funciona 100% offline.",
+              does: "Extrae Entidades Nombradas (personas, organizaciones, lugares) y las 20 palabras clave más importantes del documento." },
+            { cat: "ia", name: "Ollama", icon: "🤖", color: "#8b5cf6", version: "Local",
+              why: "Ejecuta modelos LLM (Llama 3, Qwen 2, Gemma 2) directamente en tu PC sin enviar datos a servidores externos. Privacidad total.",
+              does: "Genera las respuestas inteligentes del chatbot usando los chunks recuperados de ChromaDB como contexto." },
+            { cat: "ia", name: "FlashRank", icon: "⚡", color: "#8b5cf6", version: "0.2.10",
+              why: "Motor de Re-Ranking neuronal ultraligero (~25MB). Reordena los resultados de búsqueda por relevancia real, no solo similitud vectorial.",
+              does: "Después de que ChromaDB devuelve 5 chunks similares, FlashRank los reordena para que el más relevante quede primero." },
+
+            { cat: "vectorial", name: "ChromaDB", icon: "💎", color: "#10b981", version: "1.5.8",
+              why: "Base de datos vectorial open-source más popular. Persiste en disco, no necesita servidor externo, y soporta filtrado por metadata.",
+              does: "Almacena los vectores de cada chunk con su metadata (keywords, entidades, jerarquía). Permite búsqueda por similitud semántica." },
+            { cat: "vectorial", name: "sentence-transformers", icon: "🧮", color: "#10b981", version: "5.4.1",
+              why: "Modelos de embeddings pre-entrenados por HuggingFace. El modelo all-MiniLM-L6-v2 es el balance perfecto entre velocidad y precisión (384 dimensiones).",
+              does: "Convierte cada fragmento de texto en un vector numérico de 384 dimensiones que ChromaDB puede comparar matemáticamente." },
+            { cat: "vectorial", name: "HuggingFace Hub", icon: "🤗", color: "#10b981", version: "1.11.0",
+              why: "Repositorio central de modelos de IA. Descarga automáticamente los modelos de embeddings y los cachea localmente.",
+              does: "Descarga el modelo all-MiniLM-L6-v2 la primera vez y lo guarda en caché para uso offline posterior." },
+            { cat: "vectorial", name: "Parent-Child Retriever", icon: "👪", color: "#10b981", version: "LangChain",
+              why: "Patrón avanzado que busca por fragmentos pequeños (precisión) pero retorna el fragmento padre grande (contexto). Lo mejor de ambos mundos.",
+              does: "Indexa child-chunks de ¼ de tamaño para búsqueda granular, pero entrega el parent-chunk completo a la IA para mejor comprensión." },
+
+            { cat: "pdf", name: "pymupdf4llm", icon: "📑", color: "#f59e0b", version: "0.0.17",
+              why: "Evolución de PyMuPDF diseñada específicamente para LLMs. Extrae texto en formato Markdown nativo, preservando encabezados, listas y negritas.",
+              does: "Motor principal de extracción. Convierte cada página del PDF en Markdown limpio que la IA puede entender estructuralmente." },
+            { cat: "pdf", name: "pdfplumber", icon: "📊", color: "#f59e0b", version: "0.11.9",
+              why: "Especialista en extraer tablas y layouts con columnas complejas que otros motores destruyen.",
+              does: "Lee tablas del PDF y las convierte en DataFrames de pandas, que luego se serializan como Markdown con to_markdown()." },
+            { cat: "pdf", name: "pandas + tabulate", icon: "🗃️", color: "#f59e0b", version: "3.0.2",
+              why: "pandas estructura los datos tabulares y tabulate los renderiza como tablas Markdown legibles para la IA.",
+              does: "Convierte las tablas extraídas por pdfplumber en formato Markdown que se integra limpiamente con los chunks de texto." },
+            { cat: "pdf", name: "Tesseract OCR", icon: "🔍", color: "#f59e0b", version: "pytesseract 0.3.13",
+              why: "El motor OCR open-source más preciso del mundo. Reconoce texto en imágenes escaneadas en 100+ idiomas.",
+              does: "Cuando el PDF no tiene texto digital (es una imagen escaneada), Tesseract 'lee' la imagen y extrae el texto." },
+            { cat: "pdf", name: "Pillow (PIL)", icon: "🖼️", color: "#f59e0b", version: "12.2.0",
+              why: "Librería estándar de procesamiento de imágenes en Python. Necesaria para renderizar páginas PDF como imágenes antes del OCR.",
+              does: "Convierte cada página del PDF en una imagen PNG de alta resolución que Tesseract puede analizar." },
+
+            { cat: "frontend", name: "HTML5 + CSS3 + JS", icon: "🌐", color: "#ec4899", version: "Vanilla",
+              why: "Sin frameworks pesados (React, Vue). Máximo rendimiento, cero dependencias npm, y carga instantánea. La SPA completa pesa menos de 50KB.",
+              does: "Toda la interfaz: pestañas, wizard de configuración, tablas de chunks, gráficos de vectores, chat en tiempo real." },
+            { cat: "frontend", name: "Google Fonts (Inter)", icon: "✒️", color: "#ec4899", version: "Variable",
+              why: "Inter es la tipografía más usada en interfaces modernas (Vercel, Linear, Figma). Optimizada para pantallas con renderizado nítido.",
+              does: "Proporciona la tipografía profesional de toda la aplicación web." },
+            { cat: "frontend", name: "CSS Variables + Glassmorphism", icon: "🎨", color: "#ec4899", version: "Custom",
+              why: "Sistema de diseño propio con tokens de color, sombras y bordes consistentes. Permite cambiar el tema completo modificando 5 variables.",
+              does: "Define colores (--accent, --bg-panel), sombras (--shadow), bordes (--border) y el aspecto visual premium de la aplicación." },
+        ];
+
+        function renderStack(filter = 'all') {
+            const grid = document.getElementById('stackGrid');
+            const filtered = filter === 'all' ? stackData : stackData.filter(t => t.cat === filter);
+            document.getElementById('stackCount').textContent = filtered.length;
+            
+            grid.innerHTML = filtered.map((t, i) => `
+                <div class="stack-card" data-cat="${t.cat}" onclick="this.classList.toggle('expanded')" style="
+                    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; 
+                    padding: 1.5rem; box-shadow: var(--shadow); cursor: pointer;
+                    transition: all 0.3s ease; border-left: 4px solid ${t.color};
+                    animation: fadeInUp 0.4s ease forwards; animation-delay: ${i * 0.05}s; opacity: 0;
+                " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.1)'" 
+                   onmouseout="if(!this.classList.contains('expanded')){this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow)'}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.5rem;">${t.icon}</span>
+                            <div>
+                                <div style="font-weight:700; color:var(--text-main); font-size:0.95rem;">${t.name}</div>
+                                <div style="font-size:0.7rem; color:${t.color}; font-weight:600;">${t.version}</div>
+                            </div>
+                        </div>
+                        <span style="font-size:0.7rem; color:var(--text-dim); transition:transform 0.3s;" class="stack-arrow">▼</span>
+                    </div>
+                    <div class="stack-detail" style="max-height:0; overflow:hidden; transition: max-height 0.4s ease, opacity 0.3s; opacity:0;">
+                        <div style="padding-top:12px; border-top:1px dashed var(--border);">
+                            <div style="margin-bottom:10px;">
+                                <div style="font-size:0.7rem; text-transform:uppercase; font-weight:700; color:${t.color}; margin-bottom:4px;">¿Por qué esta tecnología?</div>
+                                <p style="font-size:0.82rem; color:var(--text-dim); line-height:1.5;">${t.why}</p>
+                            </div>
+                            <div>
+                                <div style="font-size:0.7rem; text-transform:uppercase; font-weight:700; color:var(--text-main); margin-bottom:4px;">¿Qué hace en este proyecto?</div>
+                                <p style="font-size:0.82rem; color:var(--text-dim); line-height:1.5;">${t.does}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterStack(cat) {
+            document.querySelectorAll('.stack-filter').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = b.style.borderColor;
+                b.classList.remove('active');
+            });
+            const activeBtn = event.target;
+            activeBtn.style.background = activeBtn.style.borderColor;
+            activeBtn.style.color = 'white';
+            activeBtn.classList.add('active');
+            renderStack(cat);
+        }
+
+        // CSS para animación y expansión de tarjetas
+        const stackStyle = document.createElement('style');
+        stackStyle.textContent = `
+            @keyframes fadeInUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
+            .stack-card.expanded { transform:translateY(-3px) !important; box-shadow:0 8px 25px rgba(0,0,0,0.12) !important; }
+            .stack-card.expanded .stack-detail { max-height:300px !important; opacity:1 !important; }
+            .stack-card.expanded .stack-arrow { transform:rotate(180deg); }
+        `;
+        document.head.appendChild(stackStyle);
+
+        // Renderizar al cargar
+        document.addEventListener('DOMContentLoaded', () => renderStack());
 
         function switchTab(tabId, element) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -365,6 +606,16 @@
             window._pipelineChunks = chunks;
             window._pipelineVectors = vectors;
 
+            metaInfo = Object.assign({}, metaInfo);
+            let nlpInfo = metaInfo.estructura_semantica_nlp;
+            if (nlpInfo) {
+                delete metaInfo.estructura_semantica_nlp;
+            }
+            let jerarquiaInfo = metaInfo.objetivo_jerarquico;
+            if (jerarquiaInfo) {
+                delete metaInfo.objetivo_jerarquico;
+            }
+
             // === PASO 1: METADATOS ===
             let metaHtml = JSON.stringify(metaInfo, null, 2);
 
@@ -432,8 +683,21 @@
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.2s">
                     <h3>2. Metadatos del Texto Procesado</h3>
-                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Metadatos generados a partir del texto extraído:</p>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Metadatos básicos generados a partir del texto extraído:</p>
                     <div class="code-box">${metaHtml}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.3s; border-color: #10b981;">
+                    <h3 style="color: #10b981;">2.1 Estructura Semántica (NLP - spaCy)</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Extracción inteligente de Entidades y Palabras Clave usando Procesamiento de Lenguaje Natural:</p>
+                    <div class="code-box" style="border: 1px solid #10b98150; background: #10b98105;">${JSON.stringify(nlpInfo || {estado: "No analizado"}, null, 2)}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" style="animation-delay: 0.35s; border-color: #8b5cf6;">
+                    <h3 style="color: #8b5cf6;">2.2 Objetivo Jerárquico Numérico (Metadatos Adicionales)</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Detección inteligente de Capítulos, Secciones, Subsecciones y Artículos en TODO el documento. Cada chunk en ChromaDB hereda su posición jerárquica para Metadata Filtering:</p>
+                    <div style="font-size:0.72rem; margin-bottom:8px; color:#8b5cf6; font-weight:600;">🔍 ${Array.isArray(jerarquiaInfo) ? jerarquiaInfo.length : 0} nodos jerárquicos detectados en el documento completo</div>
+                    <div class="code-box" style="border: 1px solid #8b5cf650; background: #8b5cf605; max-height:400px; overflow-y:auto;">${JSON.stringify(jerarquiaInfo || {estado: "Sin jerarquía"}, null, 2)}</div>
                 </div>
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.4s">
