@@ -42,18 +42,23 @@ Thumbs.db
 desktop.ini
 
 # Test / Debug scripts temporales
-diagnose_pdf.py
+diagnose_*.py
 diagnose_result.txt
-test_extraction.py
-test_ocr_quick.py
+test_*.py
 test_ocr_result.txt
-check_error.py
-debug_chat.py
-retest_ingestion.py
-force_pull_ollama.py
+check_*.py
+debug_*.py
+retest_*.py
+force_*.py
+laboratorio_*.py
+normative_output.json
 
 # Antigravity / Gemini
 .gemini/
 
 # Redis binarios
 redis/
+
+# Environment file (contiene secrets)
+.env
+.env.*

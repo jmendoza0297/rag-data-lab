@@ -1,0 +1,69 @@
+# Entorno virtual (Docker instala dependencias dentro del contenedor)
+venv/
+.venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Base de datos local (se crea nueva dentro del contenedor)
+db.sqlite3
+db.sqlite3-journal
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Archivos de Tesseract locales (Docker instala los suyos)
+*.traineddata
+
+# Redis binarios locales
+redis/
+dump.rdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker (evitar recursión)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentación (no necesaria en la imagen)
+*.md
+*.txt
+!requirements.txt
+
+# Scripts de diagnóstico
+diagnose_*.py
+check_*.py
+debug_*.py
+test_*.py
+retest_*.py
+force_*.py
+laboratorio_*.py
+*_result.txt
+
+# Archivos grandes de salida
+normative_output.json
+
+# Gemini / Antigravity
+.gemini/
+
+# Datos persistentes de la app (se montan como volúmenes en runtime)
+media/
+storage/
+
+# Environment file (se monta como env_file en docker-compose, no se hornea)
+.env
+.env.*

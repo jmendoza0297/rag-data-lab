@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     HomeView, DocumentUploadView, DocumentListView, 
     DocumentStatusView, DocumentProcessView, DocumentDeleteView, 
-    ChatView, VectorSearchView
+    ChatView, VectorSearchView, QdrantPushView, QdrantStatusView,
+    IntentSearchView, QdrantCollectionsListView
 )
 
 urlpatterns = [
@@ -14,4 +15,9 @@ urlpatterns = [
     path('api/documents/<uuid:uuid>/delete/', DocumentDeleteView.as_view(), name='delete'),
     path('api/documents/<uuid:uuid>/chat/', ChatView.as_view(), name='chat'),
     path('api/documents/<uuid:uuid>/vector-search/', VectorSearchView.as_view(), name='vector_search'),
+    path('api/documents/<uuid:uuid>/push-qdrant/', QdrantPushView.as_view(), name='push_qdrant'),
+    path('api/documents/<uuid:uuid>/qdrant-status/', QdrantStatusView.as_view(), name='qdrant_status'),
+    path('api/documents/<uuid:uuid>/intent-search/', IntentSearchView.as_view(), name='intent_search'),
+    path('api/qdrant/collections/', QdrantCollectionsListView.as_view(), name='qdrant_collections'),
 ]
+

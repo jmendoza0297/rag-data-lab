@@ -16,8 +16,10 @@ langchain-text-splitters==1.1.2
 
 # Embeddings & Vector Store
 sentence-transformers==5.4.1
-huggingface_hub==1.11.0
+huggingface_hub==0.36.2
 chromadb==1.5.8
+qdrant-client>=1.12.0
+langchain-qdrant>=0.2.0
 
 # PDF Extraction
 PyMuPDF==1.27.2.3
@@ -34,3 +36,14 @@ spacy==3.8.14
 
 # Re-Ranking
 FlashRank==0.2.10
+rank-bm25==0.2.2
+
+# LlamaIndex (IngestionPipeline + Extractors)
+llama-index-core==0.14.21
+llama-index-llms-ollama==0.10.1
+llama-index-embeddings-huggingface==0.7.0
+llama-index-vector-stores-chroma==0.5.5
+llama-index-extractors-entity==0.5.0
+
+# Production Server
+gunicorn==23.0.0

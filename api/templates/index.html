@@ -246,19 +246,53 @@
             <div id="pipeline-content" style="width: 100%; display:flex; flex-direction:column; align-items:center; gap: 1rem;">
                 <p style="color: var(--text-dim); margin-top: 3rem;">Sube o selecciona un documento para ver su radiografía matemática.</p>
             </div>
-            <!-- Chat directo a ChromaDB -->
+            <!-- Chat directo a Qdrant y Intent Router -->
             <div class="tab-bottom-bar">
-                <div style="font-size:0.75rem; color:var(--text-dim); display:flex; justify-content:space-between; align-items:center;">
-                    <span>🔍 <b>Consulta Directa a ChromaDB</b> — Sin IA, solo similitud vectorial</span>
-                    <label style="display:flex; align-items:center; gap:4px;"><span>Top K:</span>
-                        <select id="vectorK" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--text-main); font-size:0.75rem;">
-                            <option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
-                        </select>
-                    </label>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; gap:1rem;">
+                    <!-- Selector de Modo con Píldoras CSS Premium -->
+                    <div style="display:flex; background:var(--border); padding:3px; border-radius:8px;">
+                        <button id="modeBtnDirect" onclick="setPipelineMode('direct')" style="border:none; background:var(--bg-panel); color:var(--text-main); font-size:0.75rem; font-weight:600; padding:4px 12px; border-radius:6px; cursor:pointer; box-shadow:var(--shadow); transition: all 0.2s;">🔍 Consulta Directa</button>
+                        <button id="modeBtnRouter" onclick="setPipelineMode('router')" style="border:none; background:transparent; color:var(--text-dim); font-size:0.75rem; font-weight:600; padding:4px 12px; border-radius:6px; cursor:pointer; transition: all 0.2s;">🧠 Intent Router IA</button>
+                    </div>
+
+                    <!-- Configuración dinámica según modo -->
+                    <div id="directConfig" style="display:flex; align-items:center; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>Colección Qdrant:</span>
+                            <select id="directCollection" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--text-main); font-size:0.75rem; max-width:250px;">
+                                <option value="">-- Colección del Doc Activo --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <span>Top K:</span>
+                            <select id="vectorK" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--text-main); font-size:0.75rem;">
+                                <option value="3">3</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="routerConfig" style="display:none; align-items:center; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>Colección Qdrant:</span>
+                            <select id="routerCollection" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--text-main); font-size:0.75rem; max-width:250px;">
+                                <option value="">-- Colección del Doc Activo --</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>Modelo IA:</span>
+                            <select id="routerModel" style="border:1px solid var(--border); border-radius:4px; padding:2px 4px; background:var(--bg-main); color:var(--accent); font-weight:600; font-size:0.75rem;">
+                                <option value="llama3">Llama 3 (8B)</option>
+                                <option value="qwen2:1.5b" selected>Qwen 2 (1.5B)</option>
+                                <option value="llama3.1">Llama 3.1</option>
+                                <option value="gemma2">Gemma 2</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="chat-input-wrapper">
-                    <input type="text" id="vectorQueryInput" placeholder="Escribe una consulta para buscar en la base vectorial..." onkeypress="if(event.key==='Enter') vectorSearch()">
-                    <button onclick="vectorSearch()">Buscar</button>
+                    <input type="text" id="vectorQueryInput" placeholder="Escribe una consulta para buscar en la base vectorial..." onkeypress="if(event.key==='Enter') executePipelineSearch()">
+                    <button id="pipelineSearchBtn" onclick="executePipelineSearch()">Buscar</button>
                 </div>
             </div>
         </div>
@@ -321,7 +355,7 @@
                     <h3 style="color: var(--accent); margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">🧩 ¿Cómo funciona el Solapamiento (Overlap)?</h3>
                     <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-main); margin-bottom: 1.5rem;">
                         Imagina que el sistema corta un texto justo entre estas dos frases: <i>"Juan compró un coche rojo."</i> y <i>"Este vehículo le costó caro."</i><br>
-                        Si la IA lee solo el segundo fragmento, no sabrá qué es "Este vehículo". El <b>Solapamiento (15%)</b> hace que el final del fragmento 1 se repita en el fragmento 2, pegando las ideas lógicas para que ChromaDB las entienda juntas.
+                        Si la IA lee solo el segundo fragmento, no sabrá qué es "Este vehículo". El <b>Solapamiento (15%)</b> hace que el final del fragmento 1 se repita en el fragmento 2, pegando las ideas lógicas para que Qdrant las entienda juntas.
                     </p>
                     <div style="display: flex; gap: 15px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; flex-wrap: wrap;">
                         <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px dashed var(--accent); flex: 1; min-width: 250px;">
@@ -373,6 +407,7 @@
 
     <script>
         let currentDocId = null;
+        let allDocuments = [];
 
         const motorDescriptions = {
             "pymupdf": "⚡ Velocidad extrema. Solo para PDFs con texto digital seleccionable.",
@@ -416,22 +451,22 @@
             { cat: "ia", name: "LangChain", icon: "🔗", color: "#8b5cf6", version: "1.2.15",
               why: "El framework estándar de la industria para construir pipelines RAG. Conecta extractores, splitters, embeddings y LLMs como piezas de LEGO.",
               does: "Orquesta todo el flujo: desde que el texto se fragmenta hasta que la IA genera la respuesta final." },
-            { cat: "ia", name: "spaCy", icon: "🧬", color: "#8b5cf6", version: "3.8.14",
-              why: "La librería NLP más rápida y robusta del mundo open-source. Procesa 10,000+ palabras/segundo y funciona 100% offline.",
-              does: "Extrae Entidades Nombradas (personas, organizaciones, lugares) y las 20 palabras clave más importantes del documento." },
+            { cat: "ia", name: "LlamaIndex", icon: "🦙", color: "#8b5cf6", version: "0.14+",
+              why: "Framework avanzado para indexación de datos. Su IngestionPipeline con EntityExtractor (span-marker NER) extrae entidades sin depender de un LLM.",
+              does: "Ejecuta el pipeline: SentenceSplitter → EntityExtractor (personas, organizaciones, lugares) → HuggingFace Embeddings. Enriquece cada chunk con metadata semántica." },
             { cat: "ia", name: "Ollama", icon: "🤖", color: "#8b5cf6", version: "Local",
               why: "Ejecuta modelos LLM (Llama 3, Qwen 2, Gemma 2) directamente en tu PC sin enviar datos a servidores externos. Privacidad total.",
-              does: "Genera las respuestas inteligentes del chatbot usando los chunks recuperados de ChromaDB como contexto." },
+              does: "Genera las respuestas inteligentes del chatbot usando los chunks recuperados de Qdrant como contexto." },
             { cat: "ia", name: "FlashRank", icon: "⚡", color: "#8b5cf6", version: "0.2.10",
               why: "Motor de Re-Ranking neuronal ultraligero (~25MB). Reordena los resultados de búsqueda por relevancia real, no solo similitud vectorial.",
-              does: "Después de que ChromaDB devuelve 5 chunks similares, FlashRank los reordena para que el más relevante quede primero." },
+              does: "Después de que Qdrant devuelve 5 chunks similares, FlashRank los reordena para que el más relevante quede primero." },
 
-            { cat: "vectorial", name: "ChromaDB", icon: "💎", color: "#10b981", version: "1.5.8",
-              why: "Base de datos vectorial open-source más popular. Persiste en disco, no necesita servidor externo, y soporta filtrado por metadata.",
-              does: "Almacena los vectores de cada chunk con su metadata (keywords, entidades, jerarquía). Permite búsqueda por similitud semántica." },
+            { cat: "vectorial", name: "Qdrant", icon: "🚀", color: "#10b981", version: "1.14+",
+              why: "Base de datos vectorial de alto rendimiento escrita en Rust. Soporta filtrado avanzado, búsqueda por similitud coseno, y se ejecuta como servidor remoto en Ubuntu.",
+              does: "Almacena los vectores de cada chunk con su metadata (keywords, entidades, jerarquía). Permite búsqueda semántica desde cualquier cliente. Servidor en 172.16.21.246:6333." },
             { cat: "vectorial", name: "sentence-transformers", icon: "🧮", color: "#10b981", version: "5.4.1",
               why: "Modelos de embeddings pre-entrenados por HuggingFace. El modelo all-MiniLM-L6-v2 es el balance perfecto entre velocidad y precisión (384 dimensiones).",
-              does: "Convierte cada fragmento de texto en un vector numérico de 384 dimensiones que ChromaDB puede comparar matemáticamente." },
+              does: "Convierte cada fragmento de texto en un vector numérico de 384 dimensiones que Qdrant puede comparar matemáticamente." },
             { cat: "vectorial", name: "HuggingFace Hub", icon: "🤗", color: "#10b981", version: "1.11.0",
               why: "Repositorio central de modelos de IA. Descarga automáticamente los modelos de embeddings y los cachea localmente.",
               does: "Descarga el modelo all-MiniLM-L6-v2 la primera vez y lo guarda en caché para uso offline posterior." },
@@ -549,6 +584,8 @@
             try {
                 const res = await fetch('/api/documents/');
                 const docs = await res.json();
+                allDocuments = docs; // Guardar globalmente
+                updateCollectionSelectors(docs); // Actualizar los dropdowns de colecciones
                 const list = document.getElementById('docList');
                 list.innerHTML = '';
                 docs.forEach(doc => {
@@ -559,9 +596,19 @@
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:start;">
                             <strong>${doc.nombre}</strong>
-                            <span style="color:red; font-size:0.6rem; cursor:pointer;" onclick="deleteDoc('${doc.id}', event)">[X]</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                ${doc.estado === 'COMPLETADO' ? `<span style="color:var(--accent); font-size:0.6rem; cursor:pointer;" onclick="startProcess('${doc.id}'); event.stopPropagation();" title="Re-procesar">🔄</span>` : ''}
+                                <span style="color:red; font-size:0.6rem; cursor:pointer;" onclick="deleteDoc('${doc.id}', event)">[X]</span>
+                            </div>
                         </div>
-                        <div class="badge ${doc.estado}" id="badge-${doc.id}">${doc.estado}</div>
+                        <div style="display:flex; gap:4px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+                            <div class="badge ${doc.estado}" id="badge-${doc.id}">${doc.estado}</div>
+                            ${doc.qdrant_synced 
+                                ? '<div class="badge" style="background:#06b6d4; color:#fff; font-size:0.6rem;">🚀 Qdrant ✓</div>'
+                                : (doc.estado === 'COMPLETADO' 
+                                    ? '<div class="badge" style="background:#f59e0b; color:#fff; font-size:0.6rem;">⏳ Sin sync</div>'
+                                    : '')}
+                        </div>
                     `;
                     list.appendChild(div);
                 });
@@ -574,6 +621,16 @@
             currentDocId = id;
             fetchDocuments(); // Refresh UI selection
             loadPipelineData(id);
+            
+            // Actualizar selectores al cambiar de doc
+            setTimeout(() => {
+                const doc = allDocuments.find(d => d.id === id);
+                const colName = (doc && doc.qdrant_collection_name) ? doc.qdrant_collection_name : "";
+                const selectDirect = document.getElementById('directCollection');
+                const selectRouter = document.getElementById('routerCollection');
+                if (selectDirect) selectDirect.value = colName;
+                if (selectRouter) selectRouter.value = colName;
+            }, 300);
         }
 
         async function loadPipelineData(id) {
@@ -605,6 +662,20 @@
             window._pipelineText = textoPuro;
             window._pipelineChunks = chunks;
             window._pipelineVectors = vectors;
+
+            // Generar nombre por defecto sugerido
+            let defaultCollectionName = data.qdrant_collection_name;
+            if (!defaultCollectionName) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hour = String(now.getHours()).padStart(2, '0');
+                const min = String(now.getMinutes()).padStart(2, '0');
+                const sec = String(now.getSeconds()).padStart(2, '0');
+                const timestamp = `${year}${month}${day}_${hour}${min}${sec}`;
+                defaultCollectionName = `col_${timestamp}_${id.substring(0, 8)}`;
+            }
 
             metaInfo = Object.assign({}, metaInfo);
             let nlpInfo = metaInfo.estructura_semantica_nlp;
@@ -688,14 +759,147 @@
                 </div>
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.3s; border-color: #10b981;">
-                    <h3 style="color: #10b981;">2.1 Estructura Semántica (NLP - spaCy)</h3>
-                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Extracción inteligente de Entidades y Palabras Clave usando Procesamiento de Lenguaje Natural:</p>
-                    <div class="code-box" style="border: 1px solid #10b98150; background: #10b98105;">${JSON.stringify(nlpInfo || {estado: "No analizado"}, null, 2)}</div>
+                    <h3 style="color: #10b981;">2.1 Estructura Semántica (NLP - LlamaIndex + TF-IDF)</h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:12px;">
+                        Enriquecimiento semántico completo: NER (span-marker), TF-IDF (scikit-learn), Regex (contexto legal y técnico). 
+                        Motor: <b>${nlpInfo.motor_extraccion_metadata || 'N/A'}</b>
+                    </p>
+                    
+                    ${(() => {
+                        let html = '';
+                        const ent = nlpInfo.entidades_detectadas || {};
+                        const refs = nlpInfo.contexto_referencial || [];
+                        const attr = nlpInfo.atributos_tecnicos || {};
+                        const kw = nlpInfo.palabras_clave || [];
+                        const bigrams = nlpInfo.frases_clave_bigrams || [];
+                        const muestra = nlpInfo.muestra_chunks_enriquecidos || [];
+
+                        // --- Stats badges ---
+                        html += '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">';
+                        html += '<span style="background:#10b98120; color:#10b981; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">👤 ' + (ent.persons || []).length + ' personas</span>';
+                        html += '<span style="background:#3b82f620; color:#3b82f6; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">🏛 ' + (ent.organizations || []).length + ' organizaciones</span>';
+                        html += '<span style="background:#8b5cf620; color:#8b5cf6; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">⚖️ ' + refs.length + ' refs legales</span>';
+                        html += '<span style="background:#f59e0b20; color:#f59e0b; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">🔑 ' + kw.length + ' keywords</span>';
+                        html += '<span style="background:#ec489920; color:#ec4899; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">📊 ' + (nlpInfo.chunks_con_jerarquia || 0) + ' chunks con jerarquía</span>';
+                        html += '<span style="background:#ef444420; color:#ef4444; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-weight:700;">📐 ' + (nlpInfo.chunks_con_atributos || 0) + ' chunks con atributos</span>';
+                        html += '</div>';
+
+                        // --- Entidades ---
+                        const sections = [];
+                        if ((ent.persons || []).length > 0) {
+                            sections.push({title: '👤 Personas', color: '#10b981', items: ent.persons});
+                        }
+                        if ((ent.organizations || []).length > 0) {
+                            sections.push({title: '🏛 Organizaciones', color: '#3b82f6', items: ent.organizations});
+                        }
+                        if (refs.length > 0) {
+                            sections.push({title: '⚖️ Contexto Referencial (Leyes/Normas)', color: '#8b5cf6', items: refs});
+                        }
+
+                        sections.forEach(s => {
+                            html += '<div style="margin-bottom:10px;">';
+                            html += '<div style="font-size:0.72rem; font-weight:700; color:' + s.color + '; margin-bottom:4px;">' + s.title + '</div>';
+                            html += '<div style="display:flex; flex-wrap:wrap; gap:4px;">';
+                            s.items.forEach(item => {
+                                html += '<span style="background:' + s.color + '12; color:' + s.color + '; padding:2px 8px; border-radius:6px; font-size:0.68rem; border:1px solid ' + s.color + '30;">' + item + '</span>';
+                            });
+                            html += '</div></div>';
+                        });
+
+                        // --- Atributos Técnicos ---
+                        const hasAttr = attr.formulas?.length || attr.porcentajes?.length || attr.montos_usd?.length || attr.unidades_medida?.length || attr.estandares_minimos?.length;
+                        if (hasAttr) {
+                            html += '<div style="margin-bottom:10px;">';
+                            html += '<div style="font-size:0.72rem; font-weight:700; color:#ef4444; margin-bottom:4px;">📐 Atributos Técnicos</div>';
+                            html += '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:6px;">';
+                            if (attr.formulas?.length) {
+                                html += '<div style="background:#ef444408; border:1px solid #ef444425; border-radius:6px; padding:6px 8px;"><b style="color:#ef4444; font-size:0.68rem;">Fórmulas:</b><br>' + attr.formulas.map(f => '<code style="font-size:0.65rem;">' + f + '</code>').join(', ') + '</div>';
+                            }
+                            if (attr.porcentajes?.length) {
+                                html += '<div style="background:#f59e0b08; border:1px solid #f59e0b25; border-radius:6px; padding:6px 8px;"><b style="color:#f59e0b; font-size:0.68rem;">Porcentajes:</b><br><span style="font-size:0.68rem;">' + attr.porcentajes.join(', ') + '</span></div>';
+                            }
+                            if (attr.montos_usd?.length) {
+                                html += '<div style="background:#10b98108; border:1px solid #10b98125; border-radius:6px; padding:6px 8px;"><b style="color:#10b981; font-size:0.68rem;">Montos USD:</b><br><span style="font-size:0.68rem;">' + attr.montos_usd.join(', ') + '</span></div>';
+                            }
+                            if (attr.unidades_medida?.length) {
+                                html += '<div style="background:#3b82f608; border:1px solid #3b82f625; border-radius:6px; padding:6px 8px;"><b style="color:#3b82f6; font-size:0.68rem;">Unidades:</b><br><span style="font-size:0.68rem;">' + attr.unidades_medida.join(', ') + '</span></div>';
+                            }
+                            if (attr.estandares_minimos?.length) {
+                                html += '<div style="background:#8b5cf608; border:1px solid #8b5cf625; border-radius:6px; padding:6px 8px;"><b style="color:#8b5cf6; font-size:0.68rem;">Estándares Mínimos:</b><br><span style="font-size:0.68rem;">' + attr.estandares_minimos.slice(0,5).join(' | ') + '</span></div>';
+                            }
+                            html += '</div></div>';
+                        }
+
+                        // --- Palabras Clave TF-IDF ---
+                        if (kw.length > 0) {
+                            html += '<div style="margin-bottom:10px;">';
+                            html += '<div style="font-size:0.72rem; font-weight:700; color:#f59e0b; margin-bottom:4px;">🔑 Palabras Clave (TF-IDF)</div>';
+                            html += '<div style="display:flex; flex-wrap:wrap; gap:4px;">';
+                            kw.forEach(k => {
+                                html += '<span style="background:#f59e0b15; color:#f59e0b; padding:2px 8px; border-radius:6px; font-size:0.68rem; border:1px solid #f59e0b30;">' + k + '</span>';
+                            });
+                            html += '</div></div>';
+                        }
+                        if (bigrams.length > 0) {
+                            html += '<div style="margin-bottom:10px;">';
+                            html += '<div style="font-size:0.72rem; font-weight:700; color:#ec4899; margin-bottom:4px;">🔗 Frases Clave (Bigrams TF-IDF)</div>';
+                            html += '<div style="display:flex; flex-wrap:wrap; gap:4px;">';
+                            bigrams.forEach(b => {
+                                html += '<span style="background:#ec489915; color:#ec4899; padding:2px 8px; border-radius:6px; font-size:0.68rem; border:1px solid #ec489930;">' + b + '</span>';
+                            });
+                            html += '</div></div>';
+                        }
+
+                        // --- Muestra de chunks enriquecidos ---
+                        if (muestra.length > 0) {
+                            html += '<div style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">';
+                            html += '<div style="font-size:0.72rem; font-weight:700; color:#10b981; margin-bottom:8px;">📋 Muestra de Chunks Enriquecidos (primeros ' + muestra.length + ')</div>';
+                            muestra.forEach((chunk, idx) => {
+                                const hasPers = chunk.entidades_detectadas?.persons?.length > 0;
+                                const hasOrgs = chunk.entidades_detectadas?.organizations?.length > 0;
+                                const hasRefs = chunk.contexto_referencial?.length > 0;
+                                const hasAttr = chunk.atributos_tecnicos && Object.keys(chunk.atributos_tecnicos).length > 0;
+                                html += '<div style="background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px;">';
+                                // Header
+                                html += '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">';
+                                html += '<span style="background:#10b98125; color:#10b981; padding:2px 8px; border-radius:10px; font-size:0.68rem; font-weight:700;">Chunk #' + (idx+1) + '</span>';
+                                if (chunk.pagina_ancla) {
+                                    html += '<span style="background:#3b82f625; color:#3b82f6; padding:2px 8px; border-radius:10px; font-size:0.68rem; font-weight:700;">📄 Pág. ' + chunk.pagina_ancla + '</span>';
+                                }
+                                if (chunk.hierarchical_id) {
+                                    html += '<span style="background:#8b5cf625; color:#8b5cf6; padding:2px 8px; border-radius:10px; font-size:0.68rem; font-weight:700;">🔢 ' + chunk.hierarchical_id + ' (Nivel ' + chunk.level + ')</span>';
+                                }
+                                html += '</div>';
+                                // Text preview
+                                if (chunk.texto_preview) {
+                                    html += '<div style="font-size:0.67rem; color:var(--text-dim); background:var(--bg); padding:6px 8px; border-radius:4px; margin-bottom:6px; font-style:italic; border-left:3px solid #10b981;">' + chunk.texto_preview + '...</div>';
+                                }
+                                // Entities, refs, attributes inline
+                                let details = [];
+                                if (hasPers) details.push('👤 ' + chunk.entidades_detectadas.persons.join(', '));
+                                if (hasOrgs) details.push('🏛 ' + chunk.entidades_detectadas.organizations.join(', '));
+                                if (hasRefs) details.push('⚖️ ' + chunk.contexto_referencial.join(', '));
+                                if (hasAttr) {
+                                    const a = chunk.atributos_tecnicos;
+                                    if (a.formulas) details.push('📐 ' + a.formulas.join(', '));
+                                    if (a.porcentajes) details.push('% ' + a.porcentajes.join(', '));
+                                    if (a.estandares_minimos) details.push('📋 ' + a.estandares_minimos[0].substring(0,60) + '...');
+                                }
+                                if (details.length > 0) {
+                                    html += '<div style="font-size:0.66rem; color:var(--text-secondary);">' + details.join(' | ') + '</div>';
+                                }
+                                html += '</div>';
+                            });
+                            html += '</div>';
+                        }
+
+                        return html;
+                    })()}
                 </div>
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.35s; border-color: #8b5cf6;">
                     <h3 style="color: #8b5cf6;">2.2 Objetivo Jerárquico Numérico (Metadatos Adicionales)</h3>
-                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Detección inteligente de Capítulos, Secciones, Subsecciones y Artículos en TODO el documento. Cada chunk en ChromaDB hereda su posición jerárquica para Metadata Filtering:</p>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">Detección inteligente de Capítulos, Secciones, Subsecciones y Artículos en TODO el documento. Cada chunk en Qdrant hereda su posición jerárquica para Metadata Filtering:</p>
                     <div style="font-size:0.72rem; margin-bottom:8px; color:#8b5cf6; font-weight:600;">🔍 ${Array.isArray(jerarquiaInfo) ? jerarquiaInfo.length : 0} nodos jerárquicos detectados en el documento completo</div>
                     <div class="code-box" style="border: 1px solid #8b5cf650; background: #8b5cf605; max-height:400px; overflow-y:auto;">${JSON.stringify(jerarquiaInfo || {estado: "Sin jerarquía"}, null, 2)}</div>
                 </div>
@@ -711,13 +915,183 @@
                 </div>
                 <div class="arrow-down">↓</div>
                 <div class="pipeline-card" style="animation-delay: 0.6s">
-                    <h3>4. Vectores Embeddings (all-MiniLM-L6-v2 → ChromaDB)
+                    <h3>4. Vectores Embeddings (all-MiniLM-L6-v2 → Qdrant)
                         <span style="${dlBtnStyle}" onclick="downloadFile(JSON.stringify(window._pipelineVectors,null,2), 'vectors.json')">⬇ Descargar Vectores</span>
                     </h3>
                     <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:8px;">
                         Cada chunk convertido en ${vectors[0]?.dimensions || 384} dimensiones flotantes para búsqueda semántica:
                     </p>
                     <div style="max-height:400px; overflow-y:auto; background:var(--code-bg); border-radius:6px; padding:1rem;">${vectorsHtml}</div>
+                </div>
+                <div class="arrow-down">↓</div>
+                <div class="pipeline-card" id="qdrant-push-card" style="animation-delay: 0.8s; border: 2px solid #06b6d4; background: linear-gradient(135deg, var(--bg-panel) 0%, rgba(6,182,212,0.04) 100%);">
+                    <h3 style="color: #06b6d4; display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:1.3rem;">🚀</span> 5. Enviar a Qdrant (Servidor Remoto)
+                    </h3>
+                    <p style="font-size:0.7rem; color:var(--text-dim); margin-bottom:12px;">
+                        Envía todos los datos procesados (chunks + embeddings + metadatos enriquecidos) al servidor Qdrant remoto.
+                        Una vez sincronizado, podrás usar el Chat IA y la Búsqueda Vectorial.
+                    </p>
+                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:200px;">
+                            <div style="font-size:0.68rem; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; font-weight:700;">Servidor Destino</div>
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:#06b6d4; font-weight:600;">${data.metadata_sample?.stats?.motor_extraccion ? '172.16.21.246:6333' : '—'}</div>
+                        </div>
+                        <div style="flex:2; min-width:240px;">
+                            <div style="font-size:0.68rem; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; font-weight:700;">Nombre de la Colección en Qdrant</div>
+                            <input type="text" id="custom-collection-name" value="${defaultCollectionName}" style="
+                                width:100%; padding:8px 12px; border-radius:6px; border:1px solid var(--border);
+                                background:var(--bg-main); color:var(--text-main); font-family:'JetBrains Mono',monospace;
+                                font-size:0.78rem; font-weight:600; outline:none; box-sizing:border-box;
+                            " placeholder="Escribe un nombre único">
+                        </div>
+                        <div style="flex:1; min-width:120px;">
+                            <div style="font-size:0.68rem; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; font-weight:700;">Chunks a enviar</div>
+                            <div style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-main); font-weight:600;">${stats.total_parent_chunks || '?'} padre · ${stats.total_child_chunks || '?'} hijo</div>
+                        </div>
+                    </div>
+                    
+                    <details style="margin: 16px 0; border: 1px solid var(--border); border-radius:8px; background:var(--bg-panel); overflow:hidden; transition: all 0.3s ease;">
+                        <summary style="padding:10px 14px; font-weight:700; font-size:0.72rem; color:#06b6d4; cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center; background:rgba(6,182,212,0.02);">
+                            <span>👀 Ver Previsualización de Carga Útil a guardar (Esquema + Muestra Completa)</span>
+                            <span style="font-size:0.65rem; color:var(--text-dim);">Click para expandir</span>
+                        </summary>
+                        <div style="padding:14px; font-size:0.72rem; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:14px;">
+                            
+                            <!-- 1. ESQUEMA DE METADATOS -->
+                            <div>
+                                <b style="color:var(--text-main); font-size:0.75rem;">📋 Esquema de Carga Útil en Qdrant (Campos Filtrables por Intent Router):</b>
+                                <p style="font-size:0.68rem; color:var(--text-dim); margin:4px 0 8px 0;">
+                                    Estos son los metadatos exactos indexados en cada vector (punto) dentro de Qdrant. Puedes utilizarlos en el Ruteador de Intenciones para aplicar filtros cruzados semánticos de forma directa.
+                                </p>
+                                <div style="border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+                                    <table style="width:100%; border-collapse:collapse; font-size:0.68rem; text-align:left;">
+                                        <thead>
+                                            <tr style="background:rgba(6,182,212,0.06); border-bottom:1px solid var(--border); color:#06b6d4;">
+                                                <th style="padding:6px 8px; font-weight:700;">Campo (Key)</th>
+                                                <th style="padding:6px 8px; font-weight:700;">Tipo</th>
+                                                <th style="padding:6px 8px; font-weight:700;">Descripción para Búsqueda / Intent Router</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">page</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">Integer</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Número de página física de donde proviene el texto. Útil para acotar preguntas por rangos de páginas.</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">source</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Ruta del archivo PDF de origen. Para filtrar cuando buscas en colecciones multi-documento.</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">file_id</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String (UUID)</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Identificador único de este PDF en la base de datos de la app.</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">motor</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Motor utilizado para la extracción de texto (ej. PyMuPDF Híbrido, pdfplumber).</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">keywords</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String (CSV)</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Palabras clave TF-IDF agregadas a nivel de documento para fortalecer emparejamientos léxicos rápidos.</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">entities</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String (JSON)</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">JSON stringified con listas de personas y organizaciones deduplicadas en la página.</td>
+                                            </tr>
+                                            <tr style="border-bottom:1px solid var(--border);">
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">total_paginas</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">Número total de páginas del PDF cargado.</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:6px 8px; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent);">doc_id</td>
+                                                <td style="padding:6px 8px; color:var(--text-main);">String (UUID)</td>
+                                                <td style="padding:6px 8px; color:var(--text-dim);">ID de vinculación Parent-Child que apunta al chunk padre del docstore (LangChain ParentDocumentRetriever).</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- 2. MUESTRA COMPLETA DEL PUNTO EN QDRANT -->
+                            <div>
+                                <b style="color:var(--text-main); font-size:0.75rem;">✨ Ejemplo de Punto Vectorial Real a guardar en Qdrant (Punto #1):</b>
+                                <p style="font-size:0.68rem; color:var(--text-dim); margin:4px 0 8px 0;">
+                                    Este es el payload JSON que se envía a la colección de Qdrant, combinando el vector embedding de 384 dimensiones generado por el modelo, el fragmento de texto de búsqueda y los metadatos enriquecidos:
+                                </p>
+                                <pre style="margin:0; padding:10px; background:var(--code-bg); border-radius:6px; font-size:0.65rem; font-family:'JetBrains Mono',monospace; overflow-x:auto; border:1px solid var(--border);">${(() => {
+                                    const sampleKeywords = (nlpInfo && nlpInfo.palabras_clave) ? nlpInfo.palabras_clave.slice(0, 15).join(", ") : "evaluación, educación, calidad";
+                                    const samplePersons = (nlpInfo && nlpInfo.entidades_detectadas && nlpInfo.entidades_detectadas.persons) ? nlpInfo.entidades_detectadas.persons.slice(0, 5) : [];
+                                    const sampleOrgs = (nlpInfo && nlpInfo.entidades_detectadas && nlpInfo.entidades_detectadas.organizations) ? nlpInfo.entidades_detectadas.organizations.slice(0, 5) : [];
+                                    const sampleEntities = JSON.stringify({ "persons": samplePersons, "organizations": sampleOrgs });
+                                    
+                                    const pointPayloadSample = {
+                                        "id": "e3057ff1-7440-410e-a578-1a52146f39e9",
+                                        "vector": vectors && vectors[0] && vectors[0].sample ? vectors[0].sample.slice(0, 6).concat(["... total 384 dims ..."]) : [0.034512, -0.012399, 0.089145, -0.056711, 0.012104, "..."],
+                                        "payload": {
+                                            "page_content": chunks && chunks[0] ? chunks[0].text : "Contenido del primer fragmento de texto...",
+                                            "metadata": {
+                                                "page": chunks && chunks[0] ? chunks[0].page : 1,
+                                                "source": `/app/media/pdfs/${data.nombre}`,
+                                                "file_id": id,
+                                                "motor": stats.motor_extraccion || "pymupdf",
+                                                "keywords": sampleKeywords,
+                                                "entities": sampleEntities,
+                                                "total_paginas": String(stats.total_paginas || metaInfo.total_paginas || "?"),
+                                                "doc_id": "77bc22a6-d66a-4d7a-8f7b-99d9b4b0e8c0 (UUID del Padre en Docstore)"
+                                            }
+                                        }
+                                    };
+                                    return JSON.stringify(pointPayloadSample, null, 2);
+                                })()}</pre>
+                            </div>
+
+                            <!-- 3. MUESTRA DE FRAGMENTOS (PRIMEROS 3) -->
+                            <div>
+                                <b style="color:var(--text-main); font-size:0.75rem;">Muestra de Fragmentos (Primeros 3 Chunks):</b>
+                                <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+                                    ${chunks.slice(0, 3).map((c, idx) => `
+                                        <div style="padding:8px 10px; background:var(--code-bg); border-radius:6px; border:1px solid var(--border);">
+                                            <div style="color:#06b6d4; font-weight:700; margin-bottom:4px; font-size:0.65rem; display:flex; justify-content:space-between;">
+                                                <span>Fragmento #${idx + 1} (Original #${c.id})</span>
+                                                <span style="color:var(--text-dim);">Página ${c.page}</span>
+                                            </div>
+                                            <div style="color:var(--text-main); line-height:1.45; white-space:pre-wrap; max-height:100px; overflow-y:auto; font-family:var(--font-main); font-size:0.7rem;">${c.text}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div id="qdrant-push-status" style="margin-bottom:12px; display:none;"></div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div id="qdrant-push-btn" onclick="pushToQdrant('${id}')" style="
+                            flex:1; text-align:center; padding:14px 24px; border-radius:10px; cursor:pointer; font-weight:800;
+                            font-size:0.9rem; letter-spacing:0.5px; transition:all 0.3s ease;
+                            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+                            color:white; box-shadow: 0 4px 15px rgba(6,182,212,0.3);
+                            border: none;
+                        " onmouseover="this.style.boxShadow='0 6px 20px rgba(6,182,212,0.5)'; this.style.transform='translateY(-2px)'"
+                           onmouseout="this.style.boxShadow='0 4px 15px rgba(6,182,212,0.3)'; this.style.transform='translateY(0)'">
+                            ${data.qdrant_synced ? '🔄 Re-sincronizar con Qdrant' : '🚀 Enviar a Qdrant'}
+                        </div>
+                    </div>
+                    ${data.qdrant_synced ? (
+                        '<div style="margin-top:10px; padding:8px 12px; background:#10b98115; border:1px solid #10b98140; border-radius:8px; font-size:0.72rem; color:#10b981; font-weight:600;">'
+                        + '✅ Sincronizado — ' + (data.qdrant_sync_date ? new Date(data.qdrant_sync_date).toLocaleString('es-EC') : 'Fecha desconocida')
+                        + '</div>'
+                    ) : (
+                        '<div style="margin-top:10px; padding:8px 12px; background:#f59e0b15; border:1px solid #f59e0b40; border-radius:8px; font-size:0.72rem; color:#f59e0b; font-weight:600;">'
+                        + '⏳ Pendiente de sincronización — Los datos aún NO están en Qdrant'
+                        + '</div>'
+                    )}
                 </div>
             `;
             
@@ -910,12 +1284,13 @@
             if (!query) return;
 
             const k = document.getElementById('vectorK').value;
+            const collectionName = document.getElementById('directCollection').value;
             const container = document.getElementById('pipeline-content');
             
             // Insertar resultados al inicio del pipeline
             const resultsDiv = document.getElementById('vector-results') || document.createElement('div');
             resultsDiv.id = 'vector-results';
-            resultsDiv.innerHTML = '<p style="color:var(--accent);"><i>🔍 Buscando en ChromaDB...</i></p>';
+            resultsDiv.innerHTML = '<p style="color:var(--accent);"><i>🔍 Buscando en Qdrant (172.16.21.246:6333)...</i></p>';
             
             if (!document.getElementById('vector-results')) {
                 container.insertBefore(resultsDiv, container.firstChild);
@@ -924,7 +1299,7 @@
             try {
                 const res = await fetch(`/api/documents/${currentDocId}/vector-search/`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, k: parseInt(k) })
+                    body: JSON.stringify({ query, k: parseInt(k), collection_name: collectionName })
                 });
                 const data = await res.json();
 
@@ -949,7 +1324,7 @@
                     html += `<div class="vector-result">
                         <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:600;">
                             <span>#${i+1} — Pág. ${r.page}</span>
-                            <span style="color:${color};">${r.similarity_pct}% similitud (L2: ${r.score_l2})</span>
+                            <span style="color:${color};">${r.similarity_pct}% similitud (Coseno: ${r.score_cosine})</span>
                         </div>
                         <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px;">Interpretación: <b style="color:${color}">${r.interpretation}</b></div>
                         <div class="score-bar" style="width:${barWidth}%; background:${color};"></div>
@@ -964,12 +1339,347 @@
             input.value = '';
         }
 
+        let activePipelineMode = 'direct';
+
+        function setPipelineMode(mode) {
+            activePipelineMode = mode;
+            const btnDirect = document.getElementById('modeBtnDirect');
+            const btnRouter = document.getElementById('modeBtnRouter');
+            const configDirect = document.getElementById('directConfig');
+            const configRouter = document.getElementById('routerConfig');
+            const input = document.getElementById('vectorQueryInput');
+            const btnSearch = document.getElementById('pipelineSearchBtn');
+
+            if (mode === 'direct') {
+                btnDirect.style.background = 'var(--bg-panel)';
+                btnDirect.style.color = 'var(--text-main)';
+                btnDirect.style.boxShadow = 'var(--shadow)';
+                btnRouter.style.background = 'transparent';
+                btnRouter.style.color = 'var(--text-dim)';
+                btnRouter.style.boxShadow = 'none';
+
+                configDirect.style.display = 'flex';
+                configRouter.style.display = 'none';
+                input.placeholder = "Escribe una consulta para buscar en la base vectorial...";
+                btnSearch.innerHTML = "Buscar";
+            } else {
+                btnDirect.style.background = 'transparent';
+                btnDirect.style.color = 'var(--text-dim)';
+                btnDirect.style.boxShadow = 'none';
+                btnRouter.style.background = 'var(--bg-panel)';
+                btnRouter.style.color = 'var(--text-main)';
+                btnRouter.style.boxShadow = 'var(--shadow)';
+
+                configDirect.style.display = 'none';
+                configRouter.style.display = 'flex';
+                input.placeholder = "Pregunta al Ruteador de Intenciones (Ej: 'Hazme un resumen del pdf')...";
+                btnSearch.innerHTML = "Rutar & Buscar";
+            }
+        }
+
+        async function updateCollectionSelectors(docs) {
+            const selectDirect = document.getElementById('directCollection');
+            const selectRouter = document.getElementById('routerCollection');
+            if (!selectDirect || !selectRouter) return;
+
+            const prevDirectVal = selectDirect.value;
+            const prevRouterVal = selectRouter.value;
+
+            selectDirect.innerHTML = '<option value="">-- Colección del Doc Activo --</option>';
+            selectRouter.innerHTML = '<option value="">-- Colección del Doc Activo --</option>';
+
+            try {
+                const res = await fetch('/api/qdrant/collections/');
+                const data = await res.json();
+                const qdrantCollections = data.collections || [];
+
+                const docMap = {};
+                if (docs && docs.forEach) {
+                    docs.forEach(doc => {
+                        if (doc.qdrant_collection_name) {
+                            docMap[doc.qdrant_collection_name] = doc.nombre;
+                        }
+                    });
+                }
+
+                qdrantCollections.forEach(colName => {
+                    const docName = docMap[colName];
+                    let optionText = colName;
+                    if (docName) {
+                        const cleanDocName = docName.length > 25 ? docName.substring(0, 25) + '...' : docName;
+                        optionText = `${cleanDocName} (${colName})`;
+                    }
+
+                    const optD = document.createElement('option');
+                    optD.value = colName;
+                    optD.innerText = optionText;
+                    selectDirect.appendChild(optD);
+
+                    const optR = document.createElement('option');
+                    optR.value = colName;
+                    optR.innerText = optionText;
+                    selectRouter.appendChild(optR);
+                });
+            } catch (e) {
+                console.error("Error cargando colecciones de Qdrant", e);
+            }
+
+            if (prevDirectVal && [...selectDirect.options].some(o => o.value === prevDirectVal)) {
+                selectDirect.value = prevDirectVal;
+            } else if (currentDocId && docs) {
+                const doc = docs.find(d => d.id === currentDocId);
+                if (doc && doc.qdrant_collection_name) selectDirect.value = doc.qdrant_collection_name;
+            }
+
+            if (prevRouterVal && [...selectRouter.options].some(o => o.value === prevRouterVal)) {
+                selectRouter.value = prevRouterVal;
+            } else if (currentDocId && docs) {
+                const doc = docs.find(d => d.id === currentDocId);
+                if (doc && doc.qdrant_collection_name) selectRouter.value = doc.qdrant_collection_name;
+            }
+        }
+
+        async function executePipelineSearch() {
+            if (activePipelineMode === 'direct') {
+                await vectorSearch();
+            } else {
+                await intentSearch();
+            }
+        }
+
+        async function intentSearch() {
+            if (!currentDocId) { alert("Selecciona un documento primero"); return; }
+            const input = document.getElementById('vectorQueryInput');
+            const query = input.value;
+            if (!query) return;
+
+            const model = document.getElementById('routerModel').value;
+            const collectionName = document.getElementById('routerCollection').value;
+            const container = document.getElementById('pipeline-content');
+
+            // Insertar resultados de intent al inicio del pipeline
+            const resultsDiv = document.getElementById('vector-results') || document.createElement('div');
+            resultsDiv.id = 'vector-results';
+            resultsDiv.innerHTML = '<p style="color:var(--accent);"><i>🧠 Clasificando intención y buscando en Qdrant con Ollama...</i></p>';
+
+            if (!document.getElementById('vector-results')) {
+                container.insertBefore(resultsDiv, container.firstChild);
+            }
+
+            try {
+                const res = await fetch(`/api/documents/${currentDocId}/intent-search/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, model: model, collection_name: collectionName })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                // Definir colores y badges basados en la intención
+                let intentEmoji = "🔍";
+                let intentTitle = "Búsqueda Factual";
+                let intentColor = "#3b82f6"; // Azul
+                if (data.intent === 'resumen') {
+                    intentEmoji = "📝"; intentTitle = "Resumen y General"; intentColor = "#8b5cf6"; // Violeta
+                } else if (data.intent === 'comparacion') {
+                    intentEmoji = "⚖️"; intentTitle = "Comparación y Análisis"; intentColor = "#f59e0b"; // Ámbar
+                } else if (data.intent === 'conceptual') {
+                    intentEmoji = "💡"; intentTitle = "Definición y Concepto"; intentColor = "#10b981"; // Esmeralda
+                } else if (data.intent === 'error') {
+                    intentEmoji = "⚠️"; intentTitle = "Error de Ruteo"; intentColor = "#ef4444";
+                }
+
+                // Generar HTML Premium para la Traza y la Respuesta
+                let html = `<div class="pipeline-card" style="animation-delay:0s; border-color:${intentColor}; background: linear-gradient(180deg, var(--bg-panel) 0%, rgba(59,130,246,0.01) 100%); max-width: 100%; width: 100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+                        <h3 style="display:flex; align-items:center; gap:8px; font-size:0.95rem; color:var(--text-main);">
+                            <span>🧠 Ruteador de Intenciones Inteligente</span>
+                        </h3>
+                        <span style="font-size:0.7rem; color:var(--text-dim); font-family:var(--font-mono);">${data.telemetry.total_time} total</span>
+                    </div>
+
+                    <!-- Visual Pipeline de Metodología -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom:20px;">
+                        <!-- Columna Izquierda: Clasificación -->
+                        <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:12px;">
+                            <div style="font-size:0.65rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px;">1. Intención Detectada</div>
+                            <div style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:1rem; color:${intentColor};">
+                                <span>${intentEmoji}</span> <span>${intentTitle}</span>
+                                <span style="font-size:0.75rem; background:rgba(59,130,246,0.1); padding:2px 6px; border-radius:12px; color:${intentColor}; font-weight:500;">Confianza: ${data.confidence}%</span>
+                            </div>
+                            <p style="font-size:0.75rem; color:var(--text-dim); margin-top:8px; line-height:1.4;">
+                                <b>Razonamiento:</b> ${data.reasoning}
+                            </p>
+                        </div>
+
+                        <!-- Columna Derecha: Metodología y Parámetros -->
+                        <div style="background:var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:12px;">
+                            <div style="font-size:0.65rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; margin-bottom:4px;">2. Metodología de Búsqueda</div>
+                            <div style="font-weight:700; font-size:0.8rem; color:var(--text-main); margin-bottom:4px;">
+                                ⚙️ ${data.methodology.strategy}
+                            </div>
+                            <div style="font-size:0.65rem; color:var(--text-dim); line-height:1.4; display:flex; flex-direction:column; gap:2px;">
+                                ${Object.entries(data.methodology.params).map(([k, v]) => `<span>• <b>${k}:</b> ${v}</span>`).join('')}
+                                <span>• <b>Reranker:</b> ${data.methodology.rerank_log}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps List -->
+                    <div style="margin-bottom:20px; border-left: 2px solid ${intentColor}; padding-left:15px; margin-left:5px;">
+                        <div style="font-size:0.65rem; font-weight:700; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">Pasos Ejecutados en Pipeline</div>
+                        <ul style="font-size:0.7rem; color:var(--text-dim); display:flex; flex-direction:column; gap:4px; padding-left:12px; list-style-type: decimal;">
+                            ${data.methodology.steps.map(step => `<li>${step}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <!-- Gran Respuesta (Glassmorphism UI) -->
+                    <div style="background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: var(--shadow); border-radius:10px; padding:15px; margin-bottom:20px; border-top: 3px solid ${intentColor};">
+                        <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:700; color:${intentColor}; margin-bottom:8px;">
+                            <span>💬 RESPUESTA INMEDIATA (OLLAMA LLM)</span>
+                        </div>
+                        <div style="font-size:0.85rem; line-height:1.6; color:var(--text-main); white-space:pre-wrap; font-family:'Inter', sans-serif;">${data.answer}</div>
+                    </div>
+
+                    <!-- Chunks Recuperados (Acordeón Desplegable) -->
+                    <details style="border: 1px solid var(--border); border-radius:8px; background:var(--bg-main);">
+                        <summary style="font-size:0.75rem; font-weight:600; padding:10px 15px; cursor:pointer; color:var(--text-dim); display:flex; justify-content:space-between; align-items:center; outline:none; user-select:none;">
+                            <span>📄 Ver los Chunks Recuperados de Qdrant (${data.results.length} fragmentos)</span>
+                            <span style="font-size:0.7rem; color:var(--accent); font-weight:700;">[Desplegar]</span>
+                        </summary>
+                        <div style="padding:15px; border-top: 1px solid var(--border); display:flex; flex-direction:column; gap:12px; max-height:400px; overflow-y:auto;">`;
+
+                data.results.forEach((r, i) => {
+                    const barWidth = Math.max(5, r.similarity_pct);
+                    let color = "#10b981"; // Verde (Alta)
+                    if (r.interpretation.includes("Media")) color = "#f59e0b"; // Naranja
+                    if (r.interpretation.includes("Baja") || r.interpretation.includes("Disímiles")) color = "#ef4444"; // Rojo
+
+                    html += `<div class="vector-result" style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:5px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:600;">
+                            <span>#${i+1} — Pág. ${r.page}</span>
+                            <span style="color:${color};">${r.similarity_pct}% similitud (Coseno: ${r.score_cosine})</span>
+                        </div>
+                        <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px;">Interpretación: <b style="color:${color}">${r.interpretation}</b></div>
+                        <div class="score-bar" style="width:${barWidth}%; background:${color}; height:4px; border-radius:2px; margin-top:4px;"></div>
+                        <div style="font-size:0.75rem; margin-top:8px; white-space:pre-wrap; font-family:'JetBrains Mono',monospace; color:var(--text-main);">${r.text}</div>
+                    </div>`;
+                });
+
+                html += `</div>
+                    </details>
+                </div>`;
+
+                resultsDiv.innerHTML = html;
+
+            } catch (e) {
+                resultsDiv.innerHTML = `<p style="color:red;">Error de conexión: ${e.message}</p>`;
+            }
+            input.value = '';
+        }
+
         function downloadFile(content, filename) {
             const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = filename; a.click();
             URL.revokeObjectURL(url);
+        }
+
+        async function pushToQdrant(docId) {
+            const btn = document.getElementById('qdrant-push-btn');
+            const statusDiv = document.getElementById('qdrant-push-status');
+            
+            if (!btn || !statusDiv) return;
+
+            // Estado: Enviando
+            btn.innerHTML = '⏳ Enviando a Qdrant...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+            btn.style.background = 'linear-gradient(135deg, #6b7280, #9ca3af)';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = `
+                <div style="padding:10px 14px; background:#3b82f610; border:1px solid #3b82f640; border-radius:8px; font-size:0.75rem; color:#3b82f6; display:flex; align-items:center; gap:8px;">
+                    <div style="width:16px; height:16px; border:2px solid #3b82f6; border-top-color:transparent; border-radius:50%; animation: spin 1s linear infinite;"></div>
+                    Conectando con Qdrant (172.16.21.246:6333)... Enviando chunks y embeddings.
+                </div>
+            `;
+
+            try {
+                const customNameInput = document.getElementById('custom-collection-name');
+                const collectionName = customNameInput ? customNameInput.value.trim() : '';
+
+                const res = await fetch(`/api/documents/${docId}/push-qdrant/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection_name: collectionName })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    btn.innerHTML = '❌ Error — Click para reintentar';
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                    statusDiv.innerHTML = `
+                        <div style="padding:10px 14px; background:#ef444415; border:1px solid #ef444440; border-radius:8px; font-size:0.72rem; color:#ef4444; max-height:200px; overflow-y:auto;">
+                            <b>Error:</b><pre style="white-space:pre-wrap; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:0.68rem;">${data.error}</pre>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Estado: Éxito
+                btn.innerHTML = '✅ Sincronizado con Qdrant';
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+                statusDiv.innerHTML = `
+                    <div style="padding:12px 14px; background:#10b98115; border:1px solid #10b98140; border-radius:8px;">
+                        <div style="font-size:0.78rem; color:#10b981; font-weight:700; margin-bottom:8px;">🎉 Datos enviados exitosamente a Qdrant</div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:8px; font-size:0.72rem;">
+                            <div style="background:var(--bg-panel); padding:8px; border-radius:6px; border:1px solid var(--border);">
+                                <div style="color:var(--text-dim); font-size:0.65rem; text-transform:uppercase; font-weight:700;">Servidor</div>
+                                <div style="color:#06b6d4; font-weight:600;">${data.server}</div>
+                            </div>
+                            <div style="background:var(--bg-panel); padding:8px; border-radius:6px; border:1px solid var(--border);">
+                                <div style="color:var(--text-dim); font-size:0.65rem; text-transform:uppercase; font-weight:700;">Colección</div>
+                                <div style="color:var(--text-main); font-weight:600;">${data.collection}</div>
+                            </div>
+                            <div style="background:var(--bg-panel); padding:8px; border-radius:6px; border:1px solid var(--border);">
+                                <div style="color:var(--text-dim); font-size:0.65rem; text-transform:uppercase; font-weight:700;">Chunks Padre</div>
+                                <div style="color:#10b981; font-weight:700;">${data.parent_chunks_pushed}</div>
+                            </div>
+                            <div style="background:var(--bg-panel); padding:8px; border-radius:6px; border:1px solid var(--border);">
+                                <div style="color:var(--text-dim); font-size:0.65rem; text-transform:uppercase; font-weight:700;">Chunks Hijo</div>
+                                <div style="color:#3b82f6; font-weight:700;">${data.child_chunks_pushed}</div>
+                            </div>
+                            <div style="background:var(--bg-panel); padding:8px; border-radius:6px; border:1px solid var(--border);">
+                                <div style="color:var(--text-dim); font-size:0.65rem; text-transform:uppercase; font-weight:700;">Tiempo</div>
+                                <div style="color:var(--text-main); font-weight:600;">${data.time_seconds}s</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Refrescar lista de docs para actualizar badge
+                await fetchDocuments();
+
+            } catch (e) {
+                btn.innerHTML = '❌ Error de conexión — Click para reintentar';
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+                btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                statusDiv.innerHTML = `
+                    <div style="padding:10px 14px; background:#ef444415; border:1px solid #ef444440; border-radius:8px; font-size:0.72rem; color:#ef4444;">
+                        <b>Error de red:</b> ${e.message}. ¿Está el servidor Qdrant encendido?
+                    </div>
+                `;
+            }
         }
 
         window.onload = fetchDocuments;

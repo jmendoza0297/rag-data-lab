@@ -53,7 +53,7 @@ WSGI_APPLICATION = 'rag_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DATABASE_PATH', os.path.join(BASE_DIR, 'db.sqlite3')),
     }
 }
 
@@ -63,15 +63,25 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = REDIS_URL
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+# Ollama
+OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+
+# Qdrant
+QDRANT_URL = os.environ.get('QDRANT_URL', 'http://172.16.21.246:6333')
+QDRANT_API_KEY = os.environ.get('QDRANT_API_KEY', None)
+QDRANT_COLLECTION_NAME = os.environ.get('QDRANT_COLLECTION_NAME', 'rag_collection')
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True

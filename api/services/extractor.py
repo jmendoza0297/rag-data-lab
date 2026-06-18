@@ -17,19 +17,52 @@ Motores disponibles:
 
 import re
 import os
+import platform
+import shutil
 
-# Configuración de Tesseract OCR para Windows
-TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR"
-TESSERACT_EXE = os.path.join(TESSERACT_PATH, "tesseract.exe")
-if os.path.exists(TESSERACT_EXE):
-    os.environ["TESSDATA_PREFIX"] = os.path.join(TESSERACT_PATH, "tessdata")
-    # Añadir al PATH si no está
-    if TESSERACT_PATH not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = TESSERACT_PATH + os.pathsep + os.environ.get("PATH", "")
+# Configuración de Tesseract OCR — Detección automática del SO
+# Windows: busca en "C:\Program Files\Tesseract-OCR"
+# Linux/Docker: busca en el PATH del sistema (instalado via apt-get)
+if platform.system() == "Windows":
+    TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR"
+    TESSERACT_EXE = os.path.join(TESSERACT_PATH, "tesseract.exe")
+    if os.path.exists(TESSERACT_EXE):
+        os.environ["TESSDATA_PREFIX"] = os.path.join(TESSERACT_PATH, "tessdata")
+        if TESSERACT_PATH not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = TESSERACT_PATH + os.pathsep + os.environ.get("PATH", "")
+else:
+    # Linux / macOS / Docker — Tesseract instalado a nivel de sistema
+    TESSERACT_EXE = shutil.which("tesseract")
+    if TESSERACT_EXE:
+        # En Ubuntu/Debian, tessdata está en /usr/share/tesseract-ocr/5/tessdata/
+        tessdata_paths = [
+            "/usr/share/tesseract-ocr/5/tessdata",
+            "/usr/share/tesseract-ocr/4.00/tessdata",
+            "/usr/share/tessdata",
+        ]
+        for td_path in tessdata_paths:
+            if os.path.isdir(td_path):
+                os.environ["TESSDATA_PREFIX"] = td_path
+                break
 
 
 def _clean_text(text: str) -> str:
     """Limpieza estándar: colapsar saltos y espacios redundantes."""
+    # Eliminar placeholders de imágenes/gráficos omitidos por pymupdf4llm
+    text = re.sub(r'\*\*==[>⇒]\s*picture\s*\[\d+\s*[xX]\s*\d+\]\s*intentionally omitted\s*[<⇐]==\*\*(\n)*', '', text)
+    
+    # Eliminar marcadores de inicio y fin de texto de imagen y sus saltos de línea
+    text = re.sub(r'\*\*----- Start of picture text -----\*\*(<br>)?\n?', '', text)
+    text = re.sub(r'\*\*----- End of picture text -----\*\*(<br>)?\n?', '', text)
+    
+    # Limpiar líneas de índice (dot leaders y basura OCR asociada)
+    lines = []
+    for line in text.split('\n'):
+        # Reemplazar puntos suspensivos y basura hasta el número de página
+        line_clean = re.sub(r'\.{3,}.*?(?=\s+\d+\b)', ' ', line)
+        lines.append(line_clean)
+    text = '\n'.join(lines)
+    
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = re.sub(r'[ \t]{2,}', ' ', text)
     return text.strip()
@@ -238,9 +271,20 @@ def extract_pymupdf_ocr(file_path: str) -> dict:
                 ocr_success = False
                 for lang in ["spa+eng", "spa", "eng"]:
                     try:
-                        tp = page.get_textpage_ocr(language=lang, dpi=300, full=True)
-                        ocr_text = page.get_text("text", textpage=tp)
+                        import pytesseract
+                        from PIL import Image
+                        import io
+                        
+                        # Renderizar la página como imagen a 300 DPI para OCR directo
+                        mat = fitz.Matrix(300 / 72, 300 / 72)
+                        pix = page.get_pixmap(matrix=mat)
+                        img_bytes = pix.tobytes("png")
+                        img = Image.open(io.BytesIO(img_bytes))
+                        
+                        # OCR con Tesseract directo para mantener el flujo de líneas intacto
+                        ocr_text = pytesseract.image_to_string(img, lang=lang)
                         clean_ocr = _clean_text(ocr_text)
+                        
                         if clean_ocr and len(clean_ocr) > 10:
                             pages.append({"page": i + 1, "text": clean_ocr, "tipo": f"OCR ({lang})"})
                             paginas_ocr += 1
@@ -285,7 +329,12 @@ def _deadmau5_cleanup(text: str) -> str:
     2. Detecta y remueve patrones de headers/footers (números de página aislados).
     3. Normaliza ligaduras tipográficas (fi, fl, etc) a caracteres simples.
     4. Asegura que no queden oraciones cortadas por saltos de página.
+    5. Remueve marcadores de imágenes omitidas por pymupdf4llm.
     """
+    # 0. Eliminar placeholders de imágenes/gráficos omitidos por pymupdf4llm
+    # Formato: **==[>⇒] picture [width x height] intentionally omitted [<⇐]==**
+    text = re.sub(r'\*\*==[>⇒]\s*picture\s*\[\d+\s*[xX]\s*\d+\]\s*intentionally omitted\s*[<⇐]==\*\*(\n)*', '', text)
+
     # 1. Normalizar ligaduras comunes
     ligatures = {"ﬁ": "fi", "ﬂ": "fl", "ﬀ": "ff", "ﬃ": "ffi", "ﬄ": "ffl"}
     for k, v in ligatures.items():
@@ -299,6 +348,9 @@ def _deadmau5_cleanup(text: str) -> str:
     
     # 4. Colapsar espacios horizontales
     text = re.sub(r'[ \t]+', ' ', text)
+    
+    # 5. Colapsar saltos de línea redundantes que puedan quedar tras remover imágenes
+    text = re.sub(r'\n{3,}', '\n\n', text)
     
     return text.strip()
 

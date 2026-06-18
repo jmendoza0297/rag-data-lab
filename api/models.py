@@ -25,5 +25,10 @@ class Documento(models.Model):
     metadata_sample = models.JSONField(null=True, blank=True)
     chunks_sample = models.JSONField(null=True, blank=True)
 
+    # Sincronización con Qdrant remoto
+    qdrant_synced = models.BooleanField(default=False)
+    qdrant_sync_date = models.DateTimeField(null=True, blank=True)
+    qdrant_collection_name = models.CharField(max_length=255, null=True, blank=True)
+
     def __str__(self):
         return f"{self.nombre} ({self.estado})"
