@@ -19,7 +19,7 @@ services:
     build: .
     container_name: rag-web
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       # Datos persistentes (no se pierden al reiniciar)
       - ./media:/app/media
