@@ -232,7 +232,7 @@ docker compose ps
 # Deberían verse 4 servicios: rag-web, rag-celery, rag-redis, rag-qdrant
 
 # 2. Verificar Django
-curl http://localhost:8000/
+curl http://localhost:8090/
 # Debería devolver la página HTML de la app
 
 # 3. Verificar Qdrant
@@ -257,7 +257,7 @@ docker compose logs qdrant
 ### Acceder a la app
 Desde cualquier navegador en la red:
 ```
-http://IP_DEL_SERVIDOR:8000
+http://IP_DEL_SERVIDOR:8090
 ```
 
 ---
