@@ -63,6 +63,11 @@ Ranker(model_name='ms-marco-MiniLM-L-12-v2', cache_dir='/app/storage/flashrank_c
 # Modelo spaCy: Español (para NLP/entidades)
 RUN python -m spacy download es_core_news_sm
 
+# Modelo LlamaIndex EntityExtractor: tomaarsen/span-marker-mbert-base-multinerd (~500 MB)
+RUN python -c "\
+from llama_index.extractors.entity import EntityExtractor; \
+EntityExtractor(device='cpu')"
+
 # --- Copiar todo el código del proyecto ---
 COPY . .
 
