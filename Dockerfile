@@ -60,6 +60,9 @@ RUN python -c "\
 from flashrank import Ranker; \
 Ranker(model_name='ms-marco-MiniLM-L-12-v2', cache_dir='/app/storage/flashrank_cache')"
 
+# Descargar recursos NLTK para procesamiento de texto
+RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+
 # Modelo spaCy: Español (para NLP/entidades)
 RUN python -m spacy download es_core_news_sm
 
