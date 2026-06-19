@@ -654,7 +654,7 @@ class RAGManager:
             pat_capitulo = re.compile(
                 r"^(?:CAP[ÍI]TULO|TITULO|TÍTULO|SECCI[ÓO]N|PARTE)\s+[IVXLCDM\d]+[.\s:]|"
                 r"^Art[íi]culo\s+\d+[.\s:]|"
-                r"^\d{1,2}[.\s]\s*[A-ZÁÉÍÓÚ]",
+                r"^\d{1,2}(?=[.\s]\s*[A-ZÁÉÍÓÚ])",
                 re.IGNORECASE
             )
             pat_seccion = re.compile(r"^\d{1,2}\.\d{1,2}[.\s]", re.IGNORECASE)
