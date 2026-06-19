@@ -61,7 +61,9 @@ from flashrank import Ranker; \
 Ranker(model_name='ms-marco-MiniLM-L-12-v2', cache_dir='/app/storage/flashrank_cache')"
 
 # Descargar recursos NLTK para procesamiento de texto
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+RUN python -c "import nltk; \
+nltk.download('punkt', download_dir='/usr/share/nltk_data'); \
+nltk.download('punkt_tab', download_dir='/usr/share/nltk_data')"
 
 # Modelo spaCy: Español (para NLP/entidades)
 RUN python -m spacy download es_core_news_sm
